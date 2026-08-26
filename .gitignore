@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# System
+.DS_Store
+Thumbs.db
+*.pem
+
+# Environment
+.env
+.env.*
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Generated folders
+/ios
+/android
+app-example
+
+# Database
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+
+# Local tools
+.claude/
+.vscode/
+CLAUDE.md
+AGENTS.md
+
+Challenge-2026/
