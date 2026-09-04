@@ -9,10 +9,8 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-import { router } from "expo-router";
 import { useState } from "react";
-
-import { fazerLogin } from "../services/api";
+import { router } from "expo-router";
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
@@ -21,32 +19,34 @@ export default function HomeScreen() {
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-
-  const [mostrarSenha, setMostrarSenha] = useState(false);
-
   const [erro, setErro] = useState("");
-  const [carregando, setCarregando] = useState(false);
+  const [mostrarCredenciais, setMostrarCredenciais] = useState(false);
 
-  async function entrar() {
+  const emailDemo = "funcionario@fordretain.com";
+  const senhaDemo = "ford123";
+
+  function fazerLogin() {
+    setErro("");
+
     if (!email.trim() || !senha.trim()) {
       setErro("Preencha o e-mail e a senha.");
       return;
     }
 
-    try {
-      setErro("");
-      setCarregando(true);
+    const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-      await fazerLogin(email, senha);
-
-      router.push("/dashboard");
-    } catch (erro: any) {
-      setErro(
-        erro.message || "Não foi possível realizar o login."
-      );
-    } finally {
-      setCarregando(false);
+    if (!emailValido) {
+      setErro("Digite um e-mail válido.");
+      return;
     }
+
+    router.push("/dashboard");
+  }
+
+  function usarCredenciaisDemo() {
+    setEmail(emailDemo);
+    setSenha(senhaDemo);
+    setErro("");
   }
 
   return (
@@ -69,9 +69,7 @@ export default function HomeScreen() {
             isMobile && styles.leftContentMobile,
           ]}
         >
-          <Text style={styles.badge}>
-            Pós-venda inteligente
-          </Text>
+          <Text style={styles.badge}>Pós-venda inteligente</Text>
 
           <Text
             style={[
@@ -90,23 +88,15 @@ export default function HomeScreen() {
               isMobile && styles.heroTextMobile,
             ]}
           >
-            Monitore clientes, acompanhe veículos e priorize
-            contatos de revisão com base no risco de abandono.
+            Monitore clientes, acompanhe veículos e priorize contatos de
+            revisão com base no risco de abandono.
           </Text>
         </View>
 
-        <View
-          style={[
-            styles.card,
-            isMobile && styles.cardMobile,
-          ]}
-        >
+        <View style={[styles.card, isMobile && styles.cardMobile]}>
           <Image
             source={require("../assets/images/logo.fordd.png")}
-            style={[
-              styles.logo,
-              isMobile && styles.logoMobile,
-            ]}
+            style={[styles.logo, isMobile && styles.logoMobile]}
             resizeMode="contain"
           />
 
@@ -124,69 +114,92 @@ export default function HomeScreen() {
           </Text>
 
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              erro && !email.trim() ? styles.inputError : null,
+            ]}
             placeholder="E-mail corporativo"
             placeholderTextColor="#8EA4C2"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(texto) => {
+              setEmail(texto);
+              setErro("");
+            }}
             autoCapitalize="none"
             keyboardType="email-address"
           />
 
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Senha"
-              placeholderTextColor="#8EA4C2"
-              secureTextEntry={!mostrarSenha}
-              value={senha}
-              onChangeText={setSenha}
-            />
+          <TextInput
+            style={[
+              styles.input,
+              erro && !senha.trim() ? styles.inputError : null,
+            ]}
+            placeholder="Senha"
+            placeholderTextColor="#8EA4C2"
+            secureTextEntry
+            value={senha}
+            onChangeText={(texto) => {
+              setSenha(texto);
+              setErro("");
+            }}
+            onSubmitEditing={fazerLogin}
+          />
 
-            <TouchableOpacity
-              style={styles.eyeButton}
-              onPress={() => setMostrarSenha(!mostrarSenha)}
-            >
-              <Text style={styles.eyeText}>
-                {mostrarSenha ? "🙈" : "👁️"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {erro !== "" && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>
-                {erro}
-              </Text>
-            </View>
-          )}
+          {erro ? (
+            <Text style={styles.errorText}>
+              {erro}
+            </Text>
+          ) : null}
 
           <TouchableOpacity
-            style={[
-              styles.button,
-              carregando && styles.buttonDisabled,
-            ]}
-            onPress={entrar}
-            disabled={carregando}
+            style={styles.button}
+            onPress={fazerLogin}
           >
             <Text style={styles.buttonText}>
-              {carregando
-                ? "Entrando..."
-                : "Entrar no Sistema"}
+              Entrar no Sistema
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() =>
+              setMostrarCredenciais(!mostrarCredenciais)
+            }
+          >
+            <Text style={styles.credentialsToggle}>
+              {mostrarCredenciais
+                ? "Ocultar credenciais de demonstração"
+                : "Ver credenciais de demonstração"}
+            </Text>
+          </TouchableOpacity>
+
+          {mostrarCredenciais && (
+            <View style={styles.demoBox}>
+              <Text style={styles.demoTitle}>
+                Credenciais de demonstração
+              </Text>
+
+              <Text style={styles.demoText}>
+                E-mail: {emailDemo}
+              </Text>
+
+              <Text style={styles.demoText}>
+                Senha: {senhaDemo}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.demoButton}
+                onPress={usarCredenciaisDemo}
+              >
+                <Text style={styles.demoButtonText}>
+                  Usar credenciais
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <Text style={styles.helperText}>
             Acesso exclusivo para equipe de pós-venda
           </Text>
-
-          <TouchableOpacity
-            onPress={() => router.push("/cadastro")}
-          >
-            <Text style={styles.registerLink}>
-              Primeiro acesso? Criar conta
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     </ImageBackground>
@@ -348,49 +361,16 @@ const styles = StyleSheet.create({
     color: "#06182E",
   },
 
-  passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F6F8FB",
-    borderWidth: 1,
-    borderColor: "#D7E0EC",
-    borderRadius: 14,
-    marginBottom: 16,
-  },
-
-  passwordInput: {
-    flex: 1,
-    paddingVertical: 17,
-    paddingLeft: 18,
-    paddingRight: 8,
-    fontSize: 16,
-    color: "#06182E",
-    outlineStyle: "none",
-  } as any,
-
-  eyeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-
-  eyeText: {
-    fontSize: 19,
-  },
-
-  errorBox: {
-    backgroundColor: "#FFF1F0",
-    borderWidth: 1,
+  inputError: {
     borderColor: "#FF3B30",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 6,
   },
 
   errorText: {
-    color: "#D93025",
+    color: "#FF3B30",
     fontSize: 14,
-    fontWeight: "700",
     textAlign: "center",
+    marginTop: 4,
+    marginBottom: 6,
   },
 
   button: {
@@ -401,13 +381,54 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-
   buttonText: {
     color: "#FFFFFF",
     fontSize: 17,
+    fontWeight: "800",
+  },
+
+  credentialsToggle: {
+    color: "#0057FF",
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 16,
+    marginBottom: 12,
+  },
+
+  demoBox: {
+    backgroundColor: "#F1F5FB",
+    borderWidth: 1,
+    borderColor: "#D7E0EC",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 4,
+  },
+
+  demoTitle: {
+    color: "#06182E",
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 10,
+  },
+
+  demoText: {
+    color: "#4A5B72",
+    fontSize: 14,
+    marginBottom: 6,
+  },
+
+  demoButton: {
+    backgroundColor: "#E3ECFA",
+    paddingVertical: 11,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+
+  demoButtonText: {
+    color: "#0057FF",
+    fontSize: 14,
     fontWeight: "800",
   },
 
@@ -415,14 +436,6 @@ const styles = StyleSheet.create({
     color: "#7B8BA3",
     textAlign: "center",
     fontSize: 14,
-    marginTop: 24,
-  },
-
-  registerLink: {
-    color: "#0057FF",
-    fontSize: 15,
-    fontWeight: "800",
-    textAlign: "center",
-    marginTop: 14,
+    marginTop: 20,
   },
 });
