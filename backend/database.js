@@ -1,18 +1,37 @@
 const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
+const bcrypt = require("bcrypt");
 
-const caminhoBanco = path.join(__dirname, "ford-retain.db");
+const caminhoBanco = path.join(
+  __dirname,
+  "ford-retain.db"
+);
 
-const db = new sqlite3.Database(caminhoBanco, (erro) => {
-  if (erro) {
-    console.log("Erro ao conectar no banco:", erro.message);
-    return;
+const db = new sqlite3.Database(
+  caminhoBanco,
+  (erro) => {
+    if (erro) {
+      console.log(
+        "Erro ao conectar no banco:",
+        erro.message
+      );
+
+      return;
+    }
+
+    console.log(
+      "Banco SQLite conectado com sucesso."
+    );
   }
-
-  console.log("Banco SQLite conectado com sucesso.");
-});
+);
 
 db.serialize(() => {
+  /*
+  |--------------------------------------------------------------------------
+  | TABELA DE USUÁRIOS
+  |--------------------------------------------------------------------------
+  */
+
   db.run(`
     CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,6 +40,12 @@ db.serialize(() => {
       senha TEXT NOT NULL
     )
   `);
+
+  /*
+  |--------------------------------------------------------------------------
+  | TABELA DE CLIENTES
+  |--------------------------------------------------------------------------
+  */
 
   db.run(`
     CREATE TABLE IF NOT EXISTS clientes (
@@ -41,6 +66,12 @@ db.serialize(() => {
     )
   `);
 
+  /*
+  |--------------------------------------------------------------------------
+  | TABELA DE AGENDAMENTOS
+  |--------------------------------------------------------------------------
+  */
+
   db.run(`
     CREATE TABLE IF NOT EXISTS agendamentos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,6 +88,44 @@ db.serialize(() => {
     )
   `);
 
+  /*
+  |--------------------------------------------------------------------------
+  | USUÁRIO PADRÃO DO SISTEMA
+  |--------------------------------------------------------------------------
+  */
+
+  const senhaPadrao = bcrypt.hashSync(
+    "ford123",
+    10
+  );
+
+  /*
+   * Se o banco já possuir o usuário antigo,
+   * atualizamos ele para a nova credencial.
+   */
+
+  db.run(
+    `
+    UPDATE usuarios
+    SET
+      nome = ?,
+      email = ?,
+      senha = ?
+    WHERE email = ?
+    `,
+    [
+      "Equipe Pós-venda Ford",
+      "funcionario@fordretain.com",
+      senhaPadrao,
+      "admin@ford.com",
+    ]
+  );
+
+  /*
+   * Caso seja um banco novo, criamos
+   * o usuário de demonstração.
+   */
+
   db.run(
     `
     INSERT OR IGNORE INTO usuarios (
@@ -68,10 +137,16 @@ db.serialize(() => {
     `,
     [
       "Equipe Pós-venda Ford",
-      "admin@ford.com",
-      "ford123",
+      "funcionario@fordretain.com",
+      senhaPadrao,
     ]
   );
+
+  /*
+  |--------------------------------------------------------------------------
+  | CLIENTES INICIAIS
+  |--------------------------------------------------------------------------
+  */
 
   const clientes = [
     [
@@ -177,6 +252,12 @@ db.serialize(() => {
     ],
   ];
 
+  /*
+  |--------------------------------------------------------------------------
+  | INSERÇÃO DOS CLIENTES
+  |--------------------------------------------------------------------------
+  */
+
   const sqlCliente = `
     INSERT OR IGNORE INTO clientes (
       id,
@@ -198,7 +279,10 @@ db.serialize(() => {
   `;
 
   clientes.forEach((cliente) => {
-    db.run(sqlCliente, cliente);
+    db.run(
+      sqlCliente,
+      cliente
+    );
   });
 });
 

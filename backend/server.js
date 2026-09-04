@@ -9,9 +9,21 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
+/*
+|--------------------------------------------------------------------------
+| ROTA PRINCIPAL
+|--------------------------------------------------------------------------
+*/
+
 app.get("/", (req, res) => {
   res.send("API Ford Retain rodando!");
 });
+
+/*
+|--------------------------------------------------------------------------
+| CONCESSIONÁRIAS
+|--------------------------------------------------------------------------
+*/
 
 app.get("/concessionarias", (req, res) => {
   const concessionarias = [
@@ -24,6 +36,12 @@ app.get("/concessionarias", (req, res) => {
 
   res.json(concessionarias);
 });
+
+/*
+|--------------------------------------------------------------------------
+| USUÁRIOS
+|--------------------------------------------------------------------------
+*/
 
 app.post("/usuarios", async (req, res) => {
   const { nome, email, senha } = req.body;
@@ -125,6 +143,12 @@ app.post("/usuarios", async (req, res) => {
   );
 });
 
+/*
+|--------------------------------------------------------------------------
+| LOGIN
+|--------------------------------------------------------------------------
+*/
+
 app.post("/login", (req, res) => {
   const { email, senha } = req.body;
 
@@ -198,6 +222,12 @@ app.post("/login", (req, res) => {
   );
 });
 
+/*
+|--------------------------------------------------------------------------
+| CLIENTES
+|--------------------------------------------------------------------------
+*/
+
 app.get("/clientes", (req, res) => {
   db.all(
     `
@@ -219,6 +249,12 @@ app.get("/clientes", (req, res) => {
     }
   );
 });
+
+/*
+|--------------------------------------------------------------------------
+| BUSCAR CLIENTE
+|--------------------------------------------------------------------------
+*/
 
 app.get("/clientes/:id", (req, res) => {
   db.get(
@@ -247,6 +283,12 @@ app.get("/clientes/:id", (req, res) => {
     }
   );
 });
+
+/*
+|--------------------------------------------------------------------------
+| ATUALIZAR STATUS DO CLIENTE
+|--------------------------------------------------------------------------
+*/
 
 app.put("/clientes/:id/status", (req, res) => {
   const { status } = req.body;
@@ -301,6 +343,129 @@ app.put("/clientes/:id/status", (req, res) => {
   );
 });
 
+/*
+|--------------------------------------------------------------------------
+| ATUALIZAR QUILOMETRAGEM
+|--------------------------------------------------------------------------
+*/
+
+app.put("/clientes/:id/quilometragem", (req, res) => {
+  const { quilometragem } = req.body;
+
+  if (
+    quilometragem === undefined ||
+    quilometragem === null
+  ) {
+    return res.status(400).json({
+      mensagem: "Quilometragem é obrigatória",
+    });
+  }
+
+  const km = Number(quilometragem);
+
+  if (!Number.isFinite(km) || km <= 0) {
+    return res.status(400).json({
+      mensagem: "Informe uma quilometragem válida",
+    });
+  }
+
+  db.get(
+    `
+    SELECT *
+    FROM clientes
+    WHERE id = ?
+    `,
+    [req.params.id],
+    (erroBusca, cliente) => {
+      if (erroBusca) {
+        console.log(
+          "Erro ao buscar cliente:",
+          erroBusca
+        );
+
+        return res.status(500).json({
+          mensagem: "Erro ao buscar cliente",
+        });
+      }
+
+      if (!cliente) {
+        return res.status(404).json({
+          mensagem: "Cliente não encontrado",
+        });
+      }
+
+      if (km < Number(cliente.km)) {
+        return res.status(400).json({
+          mensagem:
+            "A nova quilometragem não pode ser menor que a atual",
+        });
+      }
+
+      db.run(
+        `
+        UPDATE clientes
+        SET km = ?
+        WHERE id = ?
+        `,
+        [km, req.params.id],
+        function (erroUpdate) {
+          if (erroUpdate) {
+            console.log(
+              "Erro ao atualizar quilometragem:",
+              erroUpdate
+            );
+
+            return res.status(500).json({
+              mensagem:
+                "Erro ao atualizar quilometragem",
+            });
+          }
+
+          if (this.changes === 0) {
+            return res.status(404).json({
+              mensagem: "Cliente não encontrado",
+            });
+          }
+
+          db.get(
+            `
+            SELECT *
+            FROM clientes
+            WHERE id = ?
+            `,
+            [req.params.id],
+            (erroRetorno, clienteAtualizado) => {
+              if (erroRetorno) {
+                console.log(
+                  "Erro ao retornar cliente:",
+                  erroRetorno
+                );
+
+                return res.status(500).json({
+                  mensagem:
+                    "Quilometragem atualizada, mas houve erro ao retornar o cliente",
+                });
+              }
+
+              return res.json({
+                mensagem:
+                  "Quilometragem atualizada com sucesso",
+                cliente: clienteAtualizado,
+              });
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
+/*
+|--------------------------------------------------------------------------
+| AGENDAMENTOS
+|--------------------------------------------------------------------------
+*/
+
 app.get("/agendamentos", (req, res) => {
   db.all(
     `
@@ -311,7 +476,10 @@ app.get("/agendamentos", (req, res) => {
     [],
     (erro, agendamentos) => {
       if (erro) {
-        console.log("Erro ao buscar agendamentos:", erro);
+        console.log(
+          "Erro ao buscar agendamentos:",
+          erro
+        );
 
         return res.status(500).json({
           mensagem: "Erro ao buscar agendamentos",
@@ -322,6 +490,12 @@ app.get("/agendamentos", (req, res) => {
     }
   );
 });
+
+/*
+|--------------------------------------------------------------------------
+| CRIAR AGENDAMENTO
+|--------------------------------------------------------------------------
+*/
 
 app.post("/agendamentos", (req, res) => {
   const {
@@ -341,7 +515,8 @@ app.post("/agendamentos", (req, res) => {
     !servico
   ) {
     return res.status(400).json({
-      mensagem: "Preencha todos os campos obrigatórios",
+      mensagem:
+        "Preencha todos os campos obrigatórios",
     });
   }
 
@@ -401,7 +576,8 @@ app.post("/agendamentos", (req, res) => {
             );
 
             return res.status(500).json({
-              mensagem: "Erro ao criar agendamento",
+              mensagem:
+                "Erro ao criar agendamento",
             });
           }
 
@@ -429,7 +605,10 @@ app.post("/agendamentos", (req, res) => {
                 WHERE id = ?
                 `,
                 [agendamentoId],
-                (erroBusca, novoAgendamento) => {
+                (
+                  erroBusca,
+                  novoAgendamento
+                ) => {
                   if (erroBusca) {
                     return res.status(500).json({
                       mensagem:
@@ -437,7 +616,9 @@ app.post("/agendamentos", (req, res) => {
                     });
                   }
 
-                  res.status(201).json(novoAgendamento);
+                  res
+                    .status(201)
+                    .json(novoAgendamento);
                 }
               );
             }
@@ -447,6 +628,12 @@ app.post("/agendamentos", (req, res) => {
     }
   );
 });
+
+/*
+|--------------------------------------------------------------------------
+| INICIAR SERVIDOR
+|--------------------------------------------------------------------------
+*/
 
 app.listen(PORT, () => {
   console.log(

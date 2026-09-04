@@ -84,6 +84,37 @@ export async function atualizarStatus(
   return dados;
 }
 
+export async function atualizarQuilometragem(
+  id: string,
+  quilometragem: number
+) {
+  const resposta = await fetch(
+    `${API_URL}/clientes/${id}/quilometragem`,
+    {
+      method: "PUT",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        quilometragem,
+      }),
+    }
+  );
+
+  const dados = await resposta.json();
+
+  if (!resposta.ok) {
+    throw new Error(
+      dados.mensagem ||
+        "Erro ao atualizar quilometragem"
+    );
+  }
+
+  return dados;
+}
+
 export async function buscarAgendamentos() {
   const resposta = await fetch(
     `${API_URL}/agendamentos`
