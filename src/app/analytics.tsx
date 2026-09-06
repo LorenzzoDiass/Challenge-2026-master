@@ -7,14 +7,12 @@ import {
   ImageBackground,
   useWindowDimensions,
 } from "react-native";
-
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import { buscarClientes } from "../services/api";
 
 export default function Analytics() {
   const { width, height } = useWindowDimensions();
-
   const isMobile = width < 768;
 
   const [clientes, setClientes] = useState<any[]>([]);
@@ -36,25 +34,42 @@ export default function Analytics() {
     carregarClientes();
   }, []);
 
+  const total = clientes.length;
+
   const alto = clientes.filter(
-    (cliente) => cliente.risco === "ALTO"
+    (cliente) => cliente.classificacaoRetain === "ALTO"
   ).length;
 
   const medio = clientes.filter(
-    (cliente) => cliente.risco === "MÉDIO"
+    (cliente) => cliente.classificacaoRetain === "MÉDIO"
   ).length;
 
   const baixo = clientes.filter(
-    (cliente) => cliente.risco === "BAIXO"
+    (cliente) => cliente.classificacaoRetain === "BAIXO"
   ).length;
 
-  const total = clientes.length;
+  const emAtencao = alto + medio;
+
+  const agendados = clientes.filter(
+    (cliente) => cliente.status === "REVISÃO AGENDADA"
+  ).length;
 
   const mediaKm =
     total > 0
       ? Math.round(
           clientes.reduce(
-            (soma, cliente) => soma + cliente.km,
+            (soma, cliente) => soma + Number(cliente.km || 0),
+            0
+          ) / total
+        )
+      : 0;
+
+  const mediaRetainScore =
+    total > 0
+      ? Math.round(
+          clientes.reduce(
+            (soma, cliente) =>
+              soma + Number(cliente.retainScore || 0),
             0
           ) / total
         )
@@ -69,19 +84,58 @@ export default function Analytics() {
   const percentualBaixo =
     total > 0 ? Math.round((baixo / total) * 100) : 0;
 
-  const cidadesCriticas = clientes
-    .filter((cliente) => cliente.risco === "ALTO")
-    .map((cliente) => cliente.cidade);
+  const percentualAgendados =
+    total > 0 ? Math.round((agendados / total) * 100) : 0;
 
-  const insightIA =
-    alto >= 2
-      ? "A IA detectou aumento crítico de risco em clientes com alta quilometragem e revisões atrasadas. Recomenda-se contato imediato e campanhas prioritárias."
-      : "Os clientes monitorados apresentam comportamento estável no pós-venda, sem aumento crítico de abandono.";
+  const cidadesCriticas = Array.from(
+    new Set(
+      clientes
+        .filter(
+          (cliente) =>
+            cliente.classificacaoRetain === "ALTO"
+        )
+        .map((cliente) => cliente.cidade)
+        .filter(Boolean)
+    )
+  );
+
+  const clientesCriticos = [...clientes]
+    .filter(
+      (cliente) =>
+        cliente.classificacaoRetain === "ALTO"
+    )
+    .sort(
+      (a, b) =>
+        Number(b.retainScore || 0) -
+        Number(a.retainScore || 0)
+    )
+    .slice(0, 3);
+
+  const insightRetain =
+    alto > 0
+      ? `${alto} cliente${
+          alto === 1 ? "" : "s"
+        } apresenta${
+          alto === 1 ? "" : "m"
+        } risco alto de evasão. A recomendação é priorizar ações de contato e benefícios de retorno à rede autorizada.`
+      : medio > 0
+      ? `Não há clientes em risco alto no momento, mas ${medio} cliente${
+          medio === 1 ? "" : "s"
+        } precisa${
+          medio === 1 ? "" : "m"
+        } de acompanhamento preventivo.`
+      : "A base monitorada apresenta baixo risco de evasão no momento.";
 
   return (
     <ImageBackground
       source={require("../assets/images/deshboard.bg.png")}
-      style={[styles.container, { width, minHeight: height }]}
+      style={[
+        styles.container,
+        {
+          width,
+          minHeight: height,
+        },
+      ]}
       imageStyle={styles.backgroundImage}
       resizeMode="cover"
     >
@@ -96,9 +150,12 @@ export default function Analytics() {
         showsVerticalScrollIndicator={false}
       >
         <TouchableOpacity
+          style={styles.backButton}
           onPress={() => router.replace("/dashboard")}
         >
-          <Text style={styles.back}>← Voltar</Text>
+          <Text style={styles.back}>
+            Voltar
+          </Text>
         </TouchableOpacity>
 
         <Text
@@ -107,7 +164,7 @@ export default function Analytics() {
             isMobile && styles.titleMobile,
           ]}
         >
-          Analytics & IA
+          Analytics
         </Text>
 
         <Text
@@ -116,8 +173,7 @@ export default function Analytics() {
             isMobile && styles.subtitleMobile,
           ]}
         >
-          Inteligência aplicada à retenção de clientes no
-          pós-venda Ford
+          Visão estratégica de retenção e pós-venda Ford
         </Text>
 
         {carregando ? (
@@ -147,11 +203,15 @@ export default function Analytics() {
                 >
                   {total}
                 </Text>
+
+                <Text style={styles.cardHint}>
+                  Base monitorada
+                </Text>
               </View>
 
               <View style={styles.card}>
                 <Text style={styles.label}>
-                  Média de quilometragem
+                  Retain Score médio
                 </Text>
 
                 <Text
@@ -160,23 +220,51 @@ export default function Analytics() {
                     isMobile && styles.numberMobile,
                   ]}
                 >
-                  {mediaKm.toLocaleString("pt-BR")} km
+                  {mediaRetainScore}%
+                </Text>
+
+                <Text style={styles.cardHint}>
+                  Risco médio da base
                 </Text>
               </View>
 
               <View style={styles.card}>
                 <Text style={styles.label}>
-                  Clientes em alerta
+                  Clientes em atenção
                 </Text>
 
                 <Text
                   style={[
                     styles.number,
-                    styles.red,
+                    styles.orange,
                     isMobile && styles.numberMobile,
                   ]}
                 >
-                  {alto + medio}
+                  {emAtencao}
+                </Text>
+
+                <Text style={styles.cardHint}>
+                  Alto ou médio risco
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.label}>
+                  Revisões agendadas
+                </Text>
+
+                <Text
+                  style={[
+                    styles.number,
+                    styles.blue,
+                    isMobile && styles.numberMobile,
+                  ]}
+                >
+                  {agendados}
+                </Text>
+
+                <Text style={styles.cardHint}>
+                  {percentualAgendados}% da base
                 </Text>
               </View>
             </View>
@@ -193,7 +281,11 @@ export default function Analytics() {
                   isMobile && styles.sectionTitleMobile,
                 ]}
               >
-                Distribuição de risco
+                Distribuição do Retain Score
+              </Text>
+
+              <Text style={styles.sectionDescription}>
+                Classificação atual dos clientes monitorados
               </Text>
 
               <View style={styles.progressWrapper}>
@@ -201,7 +293,9 @@ export default function Analytics() {
                   style={[
                     styles.progressBar,
                     styles.redBar,
-                    { width: `${percentualAlto}%` },
+                    {
+                      width: `${percentualAlto}%`,
+                    },
                   ]}
                 />
 
@@ -209,7 +303,9 @@ export default function Analytics() {
                   style={[
                     styles.progressBar,
                     styles.yellowBar,
-                    { width: `${percentualMedio}%` },
+                    {
+                      width: `${percentualMedio}%`,
+                    },
                   ]}
                 />
 
@@ -217,7 +313,9 @@ export default function Analytics() {
                   style={[
                     styles.progressBar,
                     styles.greenBar,
-                    { width: `${percentualBaixo}%` },
+                    {
+                      width: `${percentualBaixo}%`,
+                    },
                   ]}
                 />
               </View>
@@ -229,32 +327,65 @@ export default function Analytics() {
                 ]}
               >
                 <View style={styles.riskItem}>
-                  <Text style={styles.riskLabel}>
-                    🔴 Alto risco
-                  </Text>
+                  <View style={styles.riskTitleRow}>
+                    <View
+                      style={[
+                        styles.riskDot,
+                        styles.redDot,
+                      ]}
+                    />
+
+                    <Text style={styles.riskLabel}>
+                      Alto risco
+                    </Text>
+                  </View>
 
                   <Text style={styles.riskValue}>
-                    {alto} clientes • {percentualAlto}%
+                    {alto} cliente
+                    {alto === 1 ? "" : "s"} •{" "}
+                    {percentualAlto}%
                   </Text>
                 </View>
 
                 <View style={styles.riskItem}>
-                  <Text style={styles.riskLabel}>
-                    🟡 Médio risco
-                  </Text>
+                  <View style={styles.riskTitleRow}>
+                    <View
+                      style={[
+                        styles.riskDot,
+                        styles.yellowDot,
+                      ]}
+                    />
+
+                    <Text style={styles.riskLabel}>
+                      Médio risco
+                    </Text>
+                  </View>
 
                   <Text style={styles.riskValue}>
-                    {medio} clientes • {percentualMedio}%
+                    {medio} cliente
+                    {medio === 1 ? "" : "s"} •{" "}
+                    {percentualMedio}%
                   </Text>
                 </View>
 
                 <View style={styles.riskItem}>
-                  <Text style={styles.riskLabel}>
-                    🟢 Baixo risco
-                  </Text>
+                  <View style={styles.riskTitleRow}>
+                    <View
+                      style={[
+                        styles.riskDot,
+                        styles.greenDot,
+                      ]}
+                    />
+
+                    <Text style={styles.riskLabel}>
+                      Baixo risco
+                    </Text>
+                  </View>
 
                   <Text style={styles.riskValue}>
-                    {baixo} clientes • {percentualBaixo}%
+                    {baixo} cliente
+                    {baixo === 1 ? "" : "s"} •{" "}
+                    {percentualBaixo}%
                   </Text>
                 </View>
               </View>
@@ -273,14 +404,64 @@ export default function Analytics() {
                     isMobile && styles.sectionTitleMobile,
                   ]}
                 >
-                  Cidades críticas
+                  Clientes críticos
                 </Text>
 
-                {cidadesCriticas.map((cidade, index) => (
-                  <Text key={index} style={styles.row}>
-                    {index + 1}. {cidade}
+                <Text style={styles.sectionDescription}>
+                  Maiores Retain Scores da base
+                </Text>
+
+                {clientesCriticos.length === 0 ? (
+                  <Text style={styles.row}>
+                    Nenhum cliente em risco alto.
                   </Text>
-                ))}
+                ) : (
+                  clientesCriticos.map(
+                    (cliente, index) => (
+                      <TouchableOpacity
+                        key={cliente.id}
+                        style={styles.criticalClient}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/detalhes",
+                            params: {
+                              id: String(
+                                cliente.id
+                              ),
+                            },
+                          })
+                        }
+                      >
+                        <View>
+                          <Text
+                            style={
+                              styles.criticalClientName
+                            }
+                          >
+                            {index + 1}.{" "}
+                            {cliente.nome}
+                          </Text>
+
+                          <Text
+                            style={
+                              styles.criticalClientInfo
+                            }
+                          >
+                            {cliente.modelo}
+                          </Text>
+                        </View>
+
+                        <Text
+                          style={
+                            styles.criticalClientScore
+                          }
+                        >
+                          {cliente.retainScore}%
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  )
+                )}
               </View>
 
               <View style={styles.sectionSmall}>
@@ -290,50 +471,98 @@ export default function Analytics() {
                     isMobile && styles.sectionTitleMobile,
                   ]}
                 >
-                  Insight operacional
+                  Indicadores operacionais
                 </Text>
 
-                <Text style={styles.row}>
-                  {alto} clientes precisam de contato imediato.
+                <Text style={styles.sectionDescription}>
+                  Resumo da base monitorada
                 </Text>
 
-                <Text style={styles.row}>
-                  {medio} clientes devem receber campanha
-                  preventiva.
-                </Text>
+                <View style={styles.metricRow}>
+                  <Text style={styles.metricLabel}>
+                    Média de quilometragem
+                  </Text>
 
-                <Text style={styles.row}>
-                  {baixo} clientes estão em situação saudável.
-                </Text>
+                  <Text style={styles.metricValue}>
+                    {mediaKm.toLocaleString("pt-BR")} km
+                  </Text>
+                </View>
+
+                <View style={styles.metricRow}>
+                  <Text style={styles.metricLabel}>
+                    Cidades com risco alto
+                  </Text>
+
+                  <Text style={styles.metricValue}>
+                    {cidadesCriticas.length}
+                  </Text>
+                </View>
+
+                <View style={styles.metricRow}>
+                  <Text style={styles.metricLabel}>
+                    Revisões agendadas
+                  </Text>
+
+                  <Text style={styles.metricValue}>
+                    {agendados}
+                  </Text>
+                </View>
+
+                <View style={styles.metricRow}>
+                  <Text style={styles.metricLabel}>
+                    Clientes em atenção
+                  </Text>
+
+                  <Text style={styles.metricValue}>
+                    {emAtencao}
+                  </Text>
+                </View>
               </View>
             </View>
 
             <View
               style={[
-                styles.aiBox,
-                isMobile && styles.aiBoxMobile,
+                styles.insightBox,
+                isMobile && styles.insightBoxMobile,
               ]}
             >
-              <Text
-                style={[
-                  styles.aiTitle,
-                  isMobile && styles.aiTitleMobile,
-                ]}
-              >
-                Sugestão da IA
-              </Text>
+              <View style={styles.insightHeader}>
+                <Text
+                  style={[
+                    styles.insightTitle,
+                    isMobile &&
+                      styles.insightTitleMobile,
+                  ]}
+                >
+                  Insight Retain
+                </Text>
 
-              <Text style={styles.aiText}>
-                {insightIA}
+                <View style={styles.modelBadge}>
+                  <Text
+                    style={styles.modelBadgeText}
+                  >
+                    MODELO EXPLICÁVEL
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.insightText}>
+                {insightRetain}
               </Text>
             </View>
 
             <TouchableOpacity
               style={styles.reportButton}
-              onPress={() => setRelatorioGerado(true)}
+              onPress={() =>
+                setRelatorioGerado(
+                  !relatorioGerado
+                )
+              }
             >
               <Text style={styles.reportButtonText}>
-                Gerar relatório inteligente
+                {relatorioGerado
+                  ? "Ocultar relatório"
+                  : "Gerar relatório de retenção"}
               </Text>
             </TouchableOpacity>
 
@@ -342,29 +571,44 @@ export default function Analytics() {
                 <Text
                   style={[
                     styles.reportTitle,
-                    isMobile && styles.reportTitleMobile,
+                    isMobile &&
+                      styles.reportTitleMobile,
                   ]}
                 >
-                  Relatório gerado
+                  Relatório de retenção
                 </Text>
 
                 <Text style={styles.reportText}>
-                  Foram analisados {total} clientes.
-                  Atualmente, {alto} estão em alto risco,{" "}
+                  A base monitorada possui {total} cliente
+                  {total === 1 ? "" : "s"}, com Retain Score
+                  médio de {mediaRetainScore}%.
+                </Text>
+
+                <Text style={styles.reportText}>
+                  Atualmente, {alto} cliente
+                  {alto === 1 ? "" : "s"} está
+                  {alto === 1 ? "" : "o"} em alto risco,{" "}
                   {medio} em médio risco e {baixo} em baixo
                   risco.
                 </Text>
 
                 <Text style={styles.reportText}>
-                  A média de quilometragem da base é de{" "}
+                  Existem {agendados} revisão
+                  {agendados === 1 ? "" : "ões"} agendada
+                  {agendados === 1 ? "" : "s"}, representando{" "}
+                  {percentualAgendados}% da base monitorada.
+                </Text>
+
+                <Text style={styles.reportText}>
+                  A média de quilometragem atual é de{" "}
                   {mediaKm.toLocaleString("pt-BR")} km.
                 </Text>
 
                 <Text style={styles.reportText}>
-                  Recomendação da IA: priorizar contato
-                  imediato com clientes de alto risco e criar
-                  campanhas preventivas para clientes em médio
-                  risco.
+                  Recomendação operacional: priorizar clientes
+                  com Retain Score alto, acompanhar os clientes
+                  de médio risco e monitorar a conversão das
+                  ações de retenção em novos agendamentos.
                 </Text>
               </View>
             )}
@@ -380,293 +624,337 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#020B18",
   },
-
   backgroundImage: {
     width: "100%",
     height: "100%",
   },
-
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(2, 8, 20, 0.78)",
+    backgroundColor: "rgba(2, 8, 20, 0.80)",
   },
-
   scroll: {
     flex: 1,
   },
-
   scrollContent: {
-    padding: 28,
+    paddingHorizontal: 38,
+    paddingTop: 28,
     paddingBottom: 60,
   },
-
   scrollContentMobile: {
-    padding: 18,
+    paddingHorizontal: 18,
+    paddingTop: 20,
     paddingBottom: 40,
   },
-
-  back: {
-    color: "#4C8DFF",
-    fontSize: 16,
-    fontWeight: "800",
-    marginBottom: 20,
+  backButton: {
+    alignSelf: "flex-start",
+    marginBottom: 18,
   },
-
+  back: {
+    color: "#65A0FF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
   title: {
     color: "#FFFFFF",
-    fontSize: 44,
+    fontSize: 40,
     fontWeight: "900",
   },
-
   titleMobile: {
-    fontSize: 34,
+    fontSize: 32,
   },
-
   subtitle: {
-    color: "#9FB2CC",
-    fontSize: 17,
-    marginTop: 8,
+    color: "#93A8C3",
+    fontSize: 16,
+    marginTop: 7,
     marginBottom: 28,
   },
-
   subtitleMobile: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
   },
-
   loadingContainer: {
     minHeight: 300,
     justifyContent: "center",
     alignItems: "center",
   },
-
   loadingText: {
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "700",
   },
-
   grid: {
     flexDirection: "row",
-    gap: 18,
-    marginBottom: 28,
+    gap: 16,
+    marginBottom: 26,
   },
-
   gridMobile: {
     flexDirection: "column",
   },
-
   card: {
     flex: 1,
-    backgroundColor: "rgba(7, 22, 46, 0.92)",
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: "rgba(9, 19, 36, 0.88)",
+    borderRadius: 20,
+    padding: 22,
     borderWidth: 1,
-    borderColor: "#0D2A52",
+    borderColor: "rgba(101, 137, 187, 0.18)",
   },
-
   label: {
-    color: "#9FB2CC",
-    fontSize: 15,
-    marginBottom: 12,
+    color: "#93A8C3",
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 10,
   },
-
   number: {
     color: "#FFFFFF",
-    fontSize: 42,
+    fontSize: 38,
     fontWeight: "900",
   },
-
   numberMobile: {
-    fontSize: 34,
+    fontSize: 32,
   },
-
-  red: {
-    color: "#FF3B30",
+  cardHint: {
+    color: "#7489A6",
+    fontSize: 11,
+    marginTop: 8,
   },
-
+  orange: {
+    color: "#FFB800",
+  },
+  blue: {
+    color: "#65A0FF",
+  },
   section: {
-    backgroundColor: "rgba(7, 22, 46, 0.92)",
-    borderRadius: 24,
+    backgroundColor: "rgba(9, 19, 36, 0.88)",
+    borderRadius: 22,
     padding: 24,
     borderWidth: 1,
-    borderColor: "#0D2A52",
+    borderColor: "rgba(101, 137, 187, 0.18)",
     marginBottom: 24,
   },
-
   sectionMobile: {
     padding: 18,
-    borderRadius: 22,
   },
-
   sectionSmall: {
     flex: 1,
-    backgroundColor: "rgba(7, 22, 46, 0.92)",
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: "rgba(9, 19, 36, 0.88)",
+    borderRadius: 22,
+    padding: 22,
     borderWidth: 1,
-    borderColor: "#0D2A52",
+    borderColor: "rgba(101, 137, 187, 0.18)",
     marginBottom: 24,
   },
-
   sectionTitle: {
     color: "#FFFFFF",
-    fontSize: 24,
+    fontSize: 21,
     fontWeight: "900",
+  },
+  sectionTitleMobile: {
+    fontSize: 19,
+  },
+  sectionDescription: {
+    color: "#7F94AF",
+    fontSize: 12,
+    marginTop: 5,
     marginBottom: 18,
   },
-
-  sectionTitleMobile: {
-    fontSize: 20,
-  },
-
   progressWrapper: {
     flexDirection: "row",
-    height: 18,
+    height: 14,
     borderRadius: 999,
     overflow: "hidden",
     backgroundColor: "#0D2A52",
-    marginBottom: 22,
+    marginBottom: 20,
   },
-
   progressBar: {
     height: "100%",
   },
-
   redBar: {
-    backgroundColor: "#FF3B30",
+    backgroundColor: "#FF4D45",
   },
-
   yellowBar: {
-    backgroundColor: "#FFC107",
+    backgroundColor: "#FFB800",
   },
-
   greenBar: {
-    backgroundColor: "#28D764",
+    backgroundColor: "#1ED760",
   },
-
   riskGrid: {
     flexDirection: "row",
-    gap: 16,
+    gap: 14,
   },
-
   riskGridMobile: {
     flexDirection: "column",
   },
-
   riskItem: {
     flex: 1,
-    backgroundColor: "#0A1A33",
-    borderRadius: 18,
-    padding: 18,
+    backgroundColor: "rgba(18, 31, 50, 0.84)",
+    borderRadius: 14,
+    padding: 16,
   },
-
+  riskTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 7,
+  },
+  riskDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+  },
+  redDot: {
+    backgroundColor: "#FF4D45",
+  },
+  yellowDot: {
+    backgroundColor: "#FFB800",
+  },
+  greenDot: {
+    backgroundColor: "#1ED760",
+  },
   riskLabel: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
-    marginBottom: 8,
   },
-
   riskValue: {
-    color: "#9FB2CC",
-    fontSize: 15,
+    color: "#93A8C3",
+    fontSize: 13,
   },
-
   twoColumns: {
     flexDirection: "row",
     gap: 18,
   },
-
   twoColumnsMobile: {
     flexDirection: "column",
     gap: 0,
   },
-
+  criticalClient: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "rgba(18, 31, 50, 0.84)",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+  },
+  criticalClientName: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+    marginBottom: 3,
+  },
+  criticalClientInfo: {
+    color: "#8499B4",
+    fontSize: 11,
+  },
+  criticalClientScore: {
+    color: "#FF6B64",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  metricRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+    gap: 12,
+  },
+  metricLabel: {
+    color: "#A9BAD0",
+    fontSize: 13,
+  },
+  metricValue: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+  },
   row: {
     color: "#D7E3F4",
-    fontSize: 17,
-    lineHeight: 26,
-    marginBottom: 12,
+    fontSize: 14,
+    lineHeight: 22,
   },
-
-  aiBox: {
-    backgroundColor: "rgba(0, 87, 255, 0.16)",
-    borderRadius: 24,
-    padding: 26,
-    borderWidth: 1,
-    borderColor: "#0057FF",
-    marginBottom: 24,
-  },
-
-  aiBoxMobile: {
-    padding: 20,
+  insightBox: {
+    backgroundColor: "rgba(0, 87, 255, 0.10)",
     borderRadius: 22,
-  },
-
-  aiTitle: {
-    color: "#FFFFFF",
-    fontSize: 26,
-    fontWeight: "900",
-    marginBottom: 14,
-  },
-
-  aiTitleMobile: {
-    fontSize: 22,
-  },
-
-  aiText: {
-    color: "#D7E3F4",
-    fontSize: 17,
-    lineHeight: 28,
-  },
-
-  reportButton: {
-    backgroundColor: "#0057FF",
-    paddingVertical: 20,
-    borderRadius: 18,
-    alignItems: "center",
-    shadowColor: "#0057FF",
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 10,
-  },
-
-  reportButtonText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
-  reportBox: {
-    backgroundColor: "rgba(7, 22, 46, 0.92)",
-    borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: "#0057FF",
-    marginTop: 20,
+    borderColor: "rgba(0, 87, 255, 0.38)",
+    marginBottom: 24,
+  },
+  insightBoxMobile: {
+    padding: 18,
+  },
+  insightHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 14,
+    flexWrap: "wrap",
+    marginBottom: 12,
+  },
+  insightTitle: {
+    color: "#FFFFFF",
+    fontSize: 23,
+    fontWeight: "900",
+  },
+  insightTitleMobile: {
+    fontSize: 20,
+  },
+  modelBadge: {
+    backgroundColor: "rgba(0, 87, 255, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(74, 135, 255, 0.45)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+  },
+  modelBadgeText: {
+    color: "#75A8FF",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+  insightText: {
+    color: "#D0DDED",
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  reportButton: {
+    backgroundColor: "#0057FF",
+    paddingVertical: 17,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  reportButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  reportBox: {
+    backgroundColor: "rgba(9, 19, 36, 0.92)",
+    borderRadius: 20,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: "rgba(0, 87, 255, 0.45)",
+    marginTop: 18,
     marginBottom: 40,
   },
-
   reportTitle: {
     color: "#FFFFFF",
-    fontSize: 24,
+    fontSize: 21,
     fontWeight: "900",
     marginBottom: 14,
   },
-
   reportTitleMobile: {
-    fontSize: 21,
+    fontSize: 19,
   },
-
   reportText: {
-    color: "#D7E3F4",
-    fontSize: 16,
-    lineHeight: 26,
-    marginBottom: 12,
+    color: "#C3D1E3",
+    fontSize: 14,
+    lineHeight: 23,
+    marginBottom: 10,
   },
 });

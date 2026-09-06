@@ -6,11 +6,9 @@ export async function fazerLogin(
 ) {
   const resposta = await fetch(`${API_URL}/login`, {
     method: "POST",
-
     headers: {
       "Content-Type": "application/json",
     },
-
     body: JSON.stringify({
       email,
       senha,
@@ -62,11 +60,9 @@ export async function atualizarStatus(
     `${API_URL}/clientes/${id}/status`,
     {
       method: "PUT",
-
       headers: {
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify({
         status,
       }),
@@ -92,11 +88,9 @@ export async function atualizarQuilometragem(
     `${API_URL}/clientes/${id}/quilometragem`,
     {
       method: "PUT",
-
       headers: {
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify({
         quilometragem,
       }),
@@ -129,6 +123,24 @@ export async function buscarAgendamentos() {
   return dados;
 }
 
+export async function buscarAgendamentosDoCliente(
+  id: string
+) {
+  const resposta = await fetch(
+    `${API_URL}/clientes/${id}/agendamentos`
+  );
+
+  if (!resposta.ok) {
+    throw new Error(
+      "Erro ao buscar agendamentos do cliente"
+    );
+  }
+
+  const dados = await resposta.json();
+
+  return dados;
+}
+
 export async function criarAgendamento(
   dadosAgendamento: any
 ) {
@@ -136,11 +148,9 @@ export async function criarAgendamento(
     `${API_URL}/agendamentos`,
     {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json",
       },
-
       body: JSON.stringify(dadosAgendamento),
     }
   );
@@ -179,11 +189,9 @@ export async function criarUsuario(
 ) {
   const resposta = await fetch(`${API_URL}/usuarios`, {
     method: "POST",
-
     headers: {
       "Content-Type": "application/json",
     },
-
     body: JSON.stringify({
       nome,
       email,

@@ -11,6 +11,199 @@ app.use(express.json());
 
 /*
 |--------------------------------------------------------------------------
+| RETAIN SCORE
+|--------------------------------------------------------------------------
+*/
+
+function converterDataBrasileira(data) {
+  if (!data || typeof data !== "string") return null;
+
+  const partes = data.split("/");
+
+  if (partes.length !== 3) return null;
+
+  const dia = Number(partes[0]);
+  const mes = Number(partes[1]) - 1;
+  const ano = Number(partes[2]);
+
+  const dataConvertida = new Date(ano, mes, dia);
+
+  if (Number.isNaN(dataConvertida.getTime())) {
+    return null;
+  }
+
+  return dataConvertida;
+}
+
+function calcularMesesDesdeData(data) {
+  const dataConvertida = converterDataBrasileira(data);
+
+  if (!dataConvertida) return 0;
+
+  const hoje = new Date();
+
+  let meses =
+    (hoje.getFullYear() - dataConvertida.getFullYear()) * 12 +
+    (hoje.getMonth() - dataConvertida.getMonth());
+
+  if (hoje.getDate() < dataConvertida.getDate()) {
+    meses--;
+  }
+
+  return Math.max(0, meses);
+}
+
+function calcularRetainScore(cliente) {
+  let score = 10;
+  const fatoresRisco = [];
+
+  const km = Number(cliente.km) || 0;
+  const mesesSemRevisao = calcularMesesDesdeData(
+    cliente.ultimaRevisao
+  );
+
+  /*
+  |--------------------------------------------------------------------------
+  | QUILOMETRAGEM
+  |--------------------------------------------------------------------------
+  */
+
+  if (km >= 90000) {
+    score += 25;
+    fatoresRisco.push("Alta quilometragem");
+  } else if (km >= 60000) {
+    score += 18;
+    fatoresRisco.push("Quilometragem elevada");
+  } else if (km >= 40000) {
+    score += 10;
+    fatoresRisco.push("Quilometragem de atenção");
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | TEMPO DESDE A ÚLTIMA REVISÃO
+  |--------------------------------------------------------------------------
+  */
+
+  if (mesesSemRevisao >= 12) {
+    score += 30;
+    fatoresRisco.push(
+      "Mais de 12 meses desde a última revisão"
+    );
+  } else if (mesesSemRevisao >= 8) {
+    score += 22;
+    fatoresRisco.push(
+      "Longo período desde a última revisão"
+    );
+  } else if (mesesSemRevisao >= 5) {
+    score += 12;
+    fatoresRisco.push(
+      "Revisão se aproximando"
+    );
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | GARANTIA
+  |--------------------------------------------------------------------------
+  */
+
+  const garantia = String(
+    cliente.garantia || ""
+  ).toLowerCase();
+
+  if (
+    garantia.includes("fora") ||
+    garantia.includes("encerrada") ||
+    garantia.includes("expirada")
+  ) {
+    score += 20;
+    fatoresRisco.push("Veículo fora da garantia");
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | STATUS DE RELACIONAMENTO
+  |--------------------------------------------------------------------------
+  */
+
+  const status = String(
+    cliente.status || ""
+  ).toUpperCase();
+
+  if (status === "SEM CONTATO") {
+    score += 12;
+    fatoresRisco.push(
+      "Cliente ainda sem contato"
+    );
+  }
+
+  if (status === "REVISÃO AGENDADA") {
+    score -= 20;
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | LIMITAR SCORE ENTRE 0 E 100
+  |--------------------------------------------------------------------------
+  */
+
+  score = Math.max(0, Math.min(100, score));
+
+  /*
+  |--------------------------------------------------------------------------
+  | CLASSIFICAÇÃO
+  |--------------------------------------------------------------------------
+  */
+
+  let classificacao = "BAIXO";
+
+  if (score >= 70) {
+    classificacao = "ALTO";
+  } else if (score >= 40) {
+    classificacao = "MÉDIO";
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | AÇÃO RECOMENDADA
+  |--------------------------------------------------------------------------
+  */
+
+  let acaoRecomendada =
+    "Manter acompanhamento regular do cliente.";
+
+  if (classificacao === "ALTO") {
+    acaoRecomendada =
+      "Realizar contato prioritário e oferecer benefício para retorno à rede autorizada.";
+  } else if (classificacao === "MÉDIO") {
+    acaoRecomendada =
+      "Enviar lembrete de manutenção e oferta personalizada.";
+  }
+
+  if (status === "REVISÃO AGENDADA") {
+    acaoRecomendada =
+      "Acompanhar o agendamento e manter o relacionamento pós-serviço.";
+  }
+
+  return {
+    retainScore: score,
+    classificacaoRetain: classificacao,
+    fatoresRisco,
+    mesesSemRevisao,
+    acaoRecomendada,
+  };
+}
+
+function adicionarRetainScore(cliente) {
+  return {
+    ...cliente,
+    ...calcularRetainScore(cliente),
+  };
+}
+
+/*
+|--------------------------------------------------------------------------
 | ROTA PRINCIPAL
 |--------------------------------------------------------------------------
 */
@@ -57,11 +250,13 @@ app.post("/usuarios", async (req, res) => {
 
   if (nomeLimpo.length < 3) {
     return res.status(400).json({
-      mensagem: "O nome deve ter pelo menos 3 caracteres",
+      mensagem:
+        "O nome deve ter pelo menos 3 caracteres",
     });
   }
 
-  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailValido =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!emailValido.test(emailLimpo)) {
     return res.status(400).json({
@@ -71,7 +266,8 @@ app.post("/usuarios", async (req, res) => {
 
   if (senha.length < 6) {
     return res.status(400).json({
-      mensagem: "A senha deve ter pelo menos 6 caracteres",
+      mensagem:
+        "A senha deve ter pelo menos 6 caracteres",
     });
   }
 
@@ -84,7 +280,10 @@ app.post("/usuarios", async (req, res) => {
     [emailLimpo],
     async (erro, usuarioExistente) => {
       if (erro) {
-        console.log("Erro ao verificar usuário:", erro);
+        console.log(
+          "Erro ao verificar usuário:",
+          erro
+        );
 
         return res.status(500).json({
           mensagem: "Erro interno do servidor",
@@ -93,12 +292,16 @@ app.post("/usuarios", async (req, res) => {
 
       if (usuarioExistente) {
         return res.status(409).json({
-          mensagem: "Este e-mail já está cadastrado",
+          mensagem:
+            "Este e-mail já está cadastrado",
         });
       }
 
       try {
-        const senhaHash = await bcrypt.hash(senha, 10);
+        const senhaHash = await bcrypt.hash(
+          senha,
+          10
+        );
 
         db.run(
           `
@@ -109,7 +312,11 @@ app.post("/usuarios", async (req, res) => {
           )
           VALUES (?, ?, ?)
           `,
-          [nomeLimpo, emailLimpo, senhaHash],
+          [
+            nomeLimpo,
+            emailLimpo,
+            senhaHash,
+          ],
           function (erroInsert) {
             if (erroInsert) {
               console.log(
@@ -118,12 +325,14 @@ app.post("/usuarios", async (req, res) => {
               );
 
               return res.status(500).json({
-                mensagem: "Erro ao cadastrar usuário",
+                mensagem:
+                  "Erro ao cadastrar usuário",
               });
             }
 
             return res.status(201).json({
-              mensagem: "Usuário cadastrado com sucesso",
+              mensagem:
+                "Usuário cadastrado com sucesso",
               usuario: {
                 id: this.lastID,
                 nome: nomeLimpo,
@@ -133,7 +342,10 @@ app.post("/usuarios", async (req, res) => {
           }
         );
       } catch (erroHash) {
-        console.log("Erro ao proteger senha:", erroHash);
+        console.log(
+          "Erro ao proteger senha:",
+          erroHash
+        );
 
         return res.status(500).json({
           mensagem: "Erro interno do servidor",
@@ -154,11 +366,13 @@ app.post("/login", (req, res) => {
 
   if (!email || !senha) {
     return res.status(400).json({
-      mensagem: "E-mail e senha são obrigatórios",
+      mensagem:
+        "E-mail e senha são obrigatórios",
     });
   }
 
-  const emailLimpo = email.trim().toLowerCase();
+  const emailLimpo =
+    email.trim().toLowerCase();
 
   db.get(
     `
@@ -178,7 +392,8 @@ app.post("/login", (req, res) => {
 
       if (!usuario) {
         return res.status(401).json({
-          mensagem: "E-mail ou senha inválidos",
+          mensagem:
+            "E-mail ou senha inválidos",
         });
       }
 
@@ -186,22 +401,26 @@ app.post("/login", (req, res) => {
         let senhaCorreta = false;
 
         if (usuario.senha.startsWith("$2")) {
-          senhaCorreta = await bcrypt.compare(
-            senha,
-            usuario.senha
-          );
+          senhaCorreta =
+            await bcrypt.compare(
+              senha,
+              usuario.senha
+            );
         } else {
-          senhaCorreta = senha === usuario.senha;
+          senhaCorreta =
+            senha === usuario.senha;
         }
 
         if (!senhaCorreta) {
           return res.status(401).json({
-            mensagem: "E-mail ou senha inválidos",
+            mensagem:
+              "E-mail ou senha inválidos",
           });
         }
 
         return res.json({
-          mensagem: "Login realizado com sucesso",
+          mensagem:
+            "Login realizado com sucesso",
           usuario: {
             id: usuario.id,
             nome: usuario.nome,
@@ -238,14 +457,21 @@ app.get("/clientes", (req, res) => {
     [],
     (erro, clientes) => {
       if (erro) {
-        console.log("Erro ao buscar clientes:", erro);
+        console.log(
+          "Erro ao buscar clientes:",
+          erro
+        );
 
         return res.status(500).json({
-          mensagem: "Erro ao buscar clientes",
+          mensagem:
+            "Erro ao buscar clientes",
         });
       }
 
-      res.json(clientes);
+      const clientesComScore =
+        clientes.map(adicionarRetainScore);
+
+      res.json(clientesComScore);
     }
   );
 });
@@ -266,20 +492,27 @@ app.get("/clientes/:id", (req, res) => {
     [req.params.id],
     (erro, cliente) => {
       if (erro) {
-        console.log("Erro ao buscar cliente:", erro);
+        console.log(
+          "Erro ao buscar cliente:",
+          erro
+        );
 
         return res.status(500).json({
-          mensagem: "Erro ao buscar cliente",
+          mensagem:
+            "Erro ao buscar cliente",
         });
       }
 
       if (!cliente) {
         return res.status(404).json({
-          mensagem: "Cliente não encontrado",
+          mensagem:
+            "Cliente não encontrado",
         });
       }
 
-      res.json(cliente);
+      res.json(
+        adicionarRetainScore(cliente)
+      );
     }
   );
 });
@@ -308,16 +541,21 @@ app.put("/clientes/:id/status", (req, res) => {
     [status, req.params.id],
     function (erro) {
       if (erro) {
-        console.log("Erro ao atualizar status:", erro);
+        console.log(
+          "Erro ao atualizar status:",
+          erro
+        );
 
         return res.status(500).json({
-          mensagem: "Erro ao atualizar status",
+          mensagem:
+            "Erro ao atualizar status",
         });
       }
 
       if (this.changes === 0) {
         return res.status(404).json({
-          mensagem: "Cliente não encontrado",
+          mensagem:
+            "Cliente não encontrado",
         });
       }
 
@@ -336,7 +574,11 @@ app.put("/clientes/:id/status", (req, res) => {
             });
           }
 
-          res.json(clienteAtualizado);
+          res.json(
+            adicionarRetainScore(
+              clienteAtualizado
+            )
+          );
         }
       );
     }
@@ -349,116 +591,135 @@ app.put("/clientes/:id/status", (req, res) => {
 |--------------------------------------------------------------------------
 */
 
-app.put("/clientes/:id/quilometragem", (req, res) => {
-  const { quilometragem } = req.body;
+app.put(
+  "/clientes/:id/quilometragem",
+  (req, res) => {
+    const { quilometragem } = req.body;
 
-  if (
-    quilometragem === undefined ||
-    quilometragem === null
-  ) {
-    return res.status(400).json({
-      mensagem: "Quilometragem é obrigatória",
-    });
-  }
+    if (
+      quilometragem === undefined ||
+      quilometragem === null
+    ) {
+      return res.status(400).json({
+        mensagem:
+          "Quilometragem é obrigatória",
+      });
+    }
 
-  const km = Number(quilometragem);
+    const km = Number(quilometragem);
 
-  if (!Number.isFinite(km) || km <= 0) {
-    return res.status(400).json({
-      mensagem: "Informe uma quilometragem válida",
-    });
-  }
+    if (
+      !Number.isFinite(km) ||
+      km <= 0
+    ) {
+      return res.status(400).json({
+        mensagem:
+          "Informe uma quilometragem válida",
+      });
+    }
 
-  db.get(
-    `
-    SELECT *
-    FROM clientes
-    WHERE id = ?
-    `,
-    [req.params.id],
-    (erroBusca, cliente) => {
-      if (erroBusca) {
-        console.log(
-          "Erro ao buscar cliente:",
-          erroBusca
-        );
+    db.get(
+      `
+      SELECT *
+      FROM clientes
+      WHERE id = ?
+      `,
+      [req.params.id],
+      (erroBusca, cliente) => {
+        if (erroBusca) {
+          console.log(
+            "Erro ao buscar cliente:",
+            erroBusca
+          );
 
-        return res.status(500).json({
-          mensagem: "Erro ao buscar cliente",
-        });
-      }
+          return res.status(500).json({
+            mensagem:
+              "Erro ao buscar cliente",
+          });
+        }
 
-      if (!cliente) {
-        return res.status(404).json({
-          mensagem: "Cliente não encontrado",
-        });
-      }
+        if (!cliente) {
+          return res.status(404).json({
+            mensagem:
+              "Cliente não encontrado",
+          });
+        }
 
-      if (km < Number(cliente.km)) {
-        return res.status(400).json({
-          mensagem:
-            "A nova quilometragem não pode ser menor que a atual",
-        });
-      }
+        if (km < Number(cliente.km)) {
+          return res.status(400).json({
+            mensagem:
+              "A nova quilometragem não pode ser menor que a atual",
+          });
+        }
 
-      db.run(
-        `
-        UPDATE clientes
-        SET km = ?
-        WHERE id = ?
-        `,
-        [km, req.params.id],
-        function (erroUpdate) {
-          if (erroUpdate) {
-            console.log(
-              "Erro ao atualizar quilometragem:",
-              erroUpdate
-            );
+        db.run(
+          `
+          UPDATE clientes
+          SET km = ?
+          WHERE id = ?
+          `,
+          [km, req.params.id],
+          function (erroUpdate) {
+            if (erroUpdate) {
+              console.log(
+                "Erro ao atualizar quilometragem:",
+                erroUpdate
+              );
 
-            return res.status(500).json({
-              mensagem:
-                "Erro ao atualizar quilometragem",
-            });
-          }
-
-          if (this.changes === 0) {
-            return res.status(404).json({
-              mensagem: "Cliente não encontrado",
-            });
-          }
-
-          db.get(
-            `
-            SELECT *
-            FROM clientes
-            WHERE id = ?
-            `,
-            [req.params.id],
-            (erroRetorno, clienteAtualizado) => {
-              if (erroRetorno) {
-                console.log(
-                  "Erro ao retornar cliente:",
-                  erroRetorno
-                );
-
-                return res.status(500).json({
-                  mensagem:
-                    "Quilometragem atualizada, mas houve erro ao retornar o cliente",
-                });
-              }
-
-              return res.json({
+              return res.status(500).json({
                 mensagem:
-                  "Quilometragem atualizada com sucesso",
-                cliente: clienteAtualizado,
+                  "Erro ao atualizar quilometragem",
               });
             }
-          );
-        }
-      );
-    }
-  );
-});
+
+            if (this.changes === 0) {
+              return res.status(404).json({
+                mensagem:
+                  "Cliente não encontrado",
+              });
+            }
+
+            db.get(
+              `
+              SELECT *
+              FROM clientes
+              WHERE id = ?
+              `,
+              [req.params.id],
+              (
+                erroRetorno,
+                clienteAtualizado
+              ) => {
+                if (erroRetorno) {
+                  console.log(
+                    "Erro ao retornar cliente:",
+                    erroRetorno
+                  );
+
+                  return res
+                    .status(500)
+                    .json({
+                      mensagem:
+                        "Quilometragem atualizada, mas houve erro ao retornar o cliente",
+                    });
+                }
+
+                return res.json({
+                  mensagem:
+                    "Quilometragem atualizada com sucesso",
+                  cliente:
+                    adicionarRetainScore(
+                      clienteAtualizado
+                    ),
+                });
+              }
+            );
+          }
+        );
+      }
+    );
+  }
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -482,7 +743,8 @@ app.get("/agendamentos", (req, res) => {
         );
 
         return res.status(500).json({
-          mensagem: "Erro ao buscar agendamentos",
+          mensagem:
+            "Erro ao buscar agendamentos",
         });
       }
 
@@ -490,6 +752,42 @@ app.get("/agendamentos", (req, res) => {
     }
   );
 });
+
+/*
+|--------------------------------------------------------------------------
+| AGENDAMENTOS DO CLIENTE
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  "/clientes/:id/agendamentos",
+  (req, res) => {
+    db.all(
+      `
+      SELECT *
+      FROM agendamentos
+      WHERE clienteId = ?
+      ORDER BY id DESC
+      `,
+      [req.params.id],
+      (erro, agendamentos) => {
+        if (erro) {
+          console.log(
+            "Erro ao buscar agendamentos do cliente:",
+            erro
+          );
+
+          return res.status(500).json({
+            mensagem:
+              "Erro ao buscar agendamentos do cliente",
+          });
+        }
+
+        res.json(agendamentos);
+      }
+    );
+  }
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -529,16 +827,21 @@ app.post("/agendamentos", (req, res) => {
     [clienteId],
     (erro, cliente) => {
       if (erro) {
-        console.log("Erro ao buscar cliente:", erro);
+        console.log(
+          "Erro ao buscar cliente:",
+          erro
+        );
 
         return res.status(500).json({
-          mensagem: "Erro ao buscar cliente",
+          mensagem:
+            "Erro ao buscar cliente",
         });
       }
 
       if (!cliente) {
         return res.status(404).json({
-          mensagem: "Cliente não encontrado",
+          mensagem:
+            "Cliente não encontrado",
         });
       }
 
@@ -581,7 +884,8 @@ app.post("/agendamentos", (req, res) => {
             });
           }
 
-          const agendamentoId = this.lastID;
+          const agendamentoId =
+            this.lastID;
 
           db.run(
             `
@@ -589,7 +893,10 @@ app.post("/agendamentos", (req, res) => {
             SET status = ?
             WHERE id = ?
             `,
-            ["REVISÃO AGENDADA", cliente.id],
+            [
+              "REVISÃO AGENDADA",
+              cliente.id,
+            ],
             (erroStatus) => {
               if (erroStatus) {
                 console.log(
@@ -610,15 +917,19 @@ app.post("/agendamentos", (req, res) => {
                   novoAgendamento
                 ) => {
                   if (erroBusca) {
-                    return res.status(500).json({
-                      mensagem:
-                        "Agendamento criado, mas houve erro ao retornar os dados",
-                    });
+                    return res
+                      .status(500)
+                      .json({
+                        mensagem:
+                          "Agendamento criado, mas houve erro ao retornar os dados",
+                      });
                   }
 
                   res
                     .status(201)
-                    .json(novoAgendamento);
+                    .json(
+                      novoAgendamento
+                    );
                 }
               );
             }

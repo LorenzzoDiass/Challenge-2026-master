@@ -23,12 +23,9 @@ export default function MeuFord() {
   const CLIENTE_ID = "1";
 
   const [quilometragem, setQuilometragem] = useState(0);
-  const [novaQuilometragem, setNovaQuilometragem] =
-    useState("");
-
+  const [novaQuilometragem, setNovaQuilometragem] = useState("");
   const [editandoKm, setEditandoKm] = useState(false);
   const [erroKm, setErroKm] = useState("");
-
   const [carregando, setCarregando] = useState(true);
   const [salvandoKm, setSalvandoKm] = useState(false);
 
@@ -48,7 +45,6 @@ export default function MeuFord() {
       setErroKm("");
 
       const cliente = await buscarClientePorId(CLIENTE_ID);
-
       const kmAtual = Number(cliente.km);
 
       setQuilometragem(kmAtual);
@@ -71,15 +67,11 @@ export default function MeuFord() {
   */
 
   async function salvarQuilometragem() {
-    const apenasNumeros =
-      novaQuilometragem.replace(/\D/g, "");
-
+    const apenasNumeros = novaQuilometragem.replace(/\D/g, "");
     const valor = Number(apenasNumeros);
 
     if (!valor || valor <= 0) {
-      setErroKm(
-        "Digite uma quilometragem válida."
-      );
+      setErroKm("Digite uma quilometragem válida.");
       return;
     }
 
@@ -89,7 +81,6 @@ export default function MeuFord() {
           "pt-BR"
         )} km.`
       );
-
       return;
     }
 
@@ -107,11 +98,7 @@ export default function MeuFord() {
       );
 
       setQuilometragem(kmAtualizado);
-
-      setNovaQuilometragem(
-        String(kmAtualizado)
-      );
-
+      setNovaQuilometragem(String(kmAtualizado));
       setEditandoKm(false);
     } catch (erro: any) {
       console.log(
@@ -135,10 +122,7 @@ export default function MeuFord() {
   */
 
   function cancelarEdicao() {
-    setNovaQuilometragem(
-      String(quilometragem)
-    );
-
+    setNovaQuilometragem(String(quilometragem));
     setErroKm("");
     setEditandoKm(false);
   }
@@ -225,8 +209,7 @@ export default function MeuFord() {
             <Text
               style={[
                 styles.vehicleName,
-                isMobile &&
-                  styles.vehicleNameMobile,
+                isMobile && styles.vehicleNameMobile,
               ]}
             >
               Ford Ranger Raptor
@@ -260,18 +243,14 @@ export default function MeuFord() {
                 km
               </Text>
 
-              <Text
-                style={styles.mileageUpdateText}
-              >
+              <Text style={styles.mileageUpdateText}>
                 Informada pelo proprietário
               </Text>
             </View>
 
             {!editandoKm && (
               <TouchableOpacity
-                style={
-                  styles.updateMileageButton
-                }
+                style={styles.updateMileageButton}
                 onPress={() => {
                   setNovaQuilometragem(
                     String(quilometragem)
@@ -337,9 +316,7 @@ export default function MeuFord() {
                     <ActivityIndicator />
                   ) : (
                     <Text
-                      style={
-                        styles.saveButtonText
-                      }
+                      style={styles.saveButtonText}
                     >
                       Salvar quilometragem
                     </Text>
@@ -352,9 +329,7 @@ export default function MeuFord() {
                   disabled={salvandoKm}
                 >
                   <Text
-                    style={
-                      styles.cancelButtonText
-                    }
+                    style={styles.cancelButtonText}
                   >
                     Cancelar
                   </Text>
@@ -414,8 +389,7 @@ export default function MeuFord() {
         <Text
           style={[
             styles.benefitTitle,
-            isMobile &&
-              styles.benefitTitleMobile,
+            isMobile && styles.benefitTitleMobile,
           ]}
         >
           10% OFF na revisão preventiva
@@ -429,7 +403,13 @@ export default function MeuFord() {
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={() =>
-            router.push("/agendamento?id=1")
+            router.push({
+              pathname: "/agendamento",
+              params: {
+                id: CLIENTE_ID,
+                origem: "cliente",
+              },
+            })
           }
         >
           <Text style={styles.primaryButtonText}>

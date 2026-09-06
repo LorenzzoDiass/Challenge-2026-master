@@ -1,5 +1,8 @@
 import { router } from "expo-router";
+import { useEffect, useState } from "react";
+
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,9 +11,63 @@ import {
   useWindowDimensions,
 } from "react-native";
 
+import {
+  buscarAgendamentosDoCliente,
+  buscarClientePorId,
+} from "../services/api";
+
+const CLIENTE_ID = "1";
+
 export default function MeusAgendamentos() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
+
+  const [cliente, setCliente] = useState<any>(null);
+  const [agendamentos, setAgendamentos] = useState<any[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
+  async function carregarDados() {
+    try {
+      setCarregando(true);
+      setErro("");
+
+      const [dadosCliente, dadosAgendamentos] =
+        await Promise.all([
+          buscarClientePorId(CLIENTE_ID),
+          buscarAgendamentosDoCliente(CLIENTE_ID),
+        ]);
+
+      setCliente(dadosCliente);
+      setAgendamentos(dadosAgendamentos);
+    } catch (erro) {
+      console.log(
+        "Erro ao carregar agendamentos:",
+        erro
+      );
+
+      setErro(
+        "Não foi possível carregar seus agendamentos."
+      );
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  if (carregando) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>
+          Carregando seus agendamentos...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -22,118 +79,238 @@ export default function MeusAgendamentos() {
       showsVerticalScrollIndicator={false}
     >
       {/* CABEÇALHO */}
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          isMobile && styles.headerMobile,
+        ]}
+      >
         <View style={styles.headerContent}>
-          <Text style={styles.badge}>Área do cliente</Text>
+          <Text style={styles.badge}>
+            Área do cliente
+          </Text>
 
-          <Text style={[styles.title, isMobile && styles.titleMobile]}>
+          <Text
+            style={[
+              styles.title,
+              isMobile && styles.titleMobile,
+            ]}
+          >
             Meus agendamentos
           </Text>
 
           <Text style={styles.subtitle}>
-            Acompanhe seus próximos serviços na rede autorizada Ford.
+            Acompanhe seus próximos serviços na rede
+            autorizada Ford.
           </Text>
         </View>
 
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.replace("/meu-ford")}
+          onPress={() =>
+            router.replace("/meu-ford")
+          }
         >
-          <Text style={styles.backButtonText}>Voltar</Text>
+          <Text style={styles.backButtonText}>
+            Voltar
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* VEÍCULO */}
-      <View style={styles.vehicleCard}>
-        <Text style={styles.vehicleLabel}>MEU VEÍCULO</Text>
-
-        <Text style={styles.vehicleName}>
-          Ford Ranger Raptor
-        </Text>
-
-        <Text style={styles.vehicleInfo}>
-          2022 • 98.000 km
-        </Text>
-      </View>
-
-      {/* AGENDAMENTOS */}
-      <Text style={styles.sectionTitle}>
-        Próximos agendamentos
-      </Text>
-
-      <View style={styles.appointmentCard}>
-        <View
-          style={[
-            styles.appointmentHeader,
-            isMobile && styles.appointmentHeaderMobile,
-          ]}
-        >
-          <View style={styles.appointmentHeaderContent}>
-            <Text style={styles.serviceName}>
-              Revisão preventiva
-            </Text>
-
-            <Text style={styles.dealership}>
-              Ford Center Morumbi
-            </Text>
-          </View>
-
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>
-              Confirmado
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.divider} />
-
-        <View
-          style={[
-            styles.detailsRow,
-            isMobile && styles.detailsRowMobile,
-          ]}
-        >
-          <View style={styles.detailBox}>
-            <Text style={styles.detailLabel}>
-              Data
-            </Text>
-
-            <Text style={styles.detailValue}>
-              28/05/2026
-            </Text>
-          </View>
-
-          <View style={styles.detailBox}>
-            <Text style={styles.detailLabel}>
-              Horário
-            </Text>
-
-            <Text style={styles.detailValue}>
-              14:30
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.observationBox}>
-          <Text style={styles.observationLabel}>
-            Observação
+      {cliente && (
+        <View style={styles.vehicleCard}>
+          <Text style={styles.vehicleLabel}>
+            MEU VEÍCULO
           </Text>
 
-          <Text style={styles.observationText}>
-            Avaliação geral do veículo solicitada no agendamento.
+          <Text style={styles.vehicleName}>
+            {cliente.modelo}
+          </Text>
+
+          <Text style={styles.vehicleInfo}>
+            {cliente.ano} •{" "}
+            {Number(cliente.km).toLocaleString(
+              "pt-BR"
+            )}{" "}
+            km
           </Text>
         </View>
-      </View>
+      )}
 
-      {/* NOVO AGENDAMENTO */}
-      <TouchableOpacity
-        style={styles.newAppointmentButton}
-        onPress={() => router.push("/agendamento?id=1")}
-      >
-        <Text style={styles.newAppointmentButtonText}>
-          Agendar nova revisão
-        </Text>
-      </TouchableOpacity>
+      {/* ERRO */}
+      {erro ? (
+        <View style={styles.errorCard}>
+          <Text style={styles.errorTitle}>
+            Não foi possível carregar os dados
+          </Text>
+
+          <Text style={styles.errorText}>
+            {erro}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={carregarDados}
+          >
+            <Text style={styles.retryButtonText}>
+              Tentar novamente
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {/* AGENDAMENTOS */}
+          <View
+            style={[
+              styles.sectionHeader,
+              isMobile &&
+                styles.sectionHeaderMobile,
+            ]}
+          >
+            <View>
+              <Text style={styles.sectionTitle}>
+                Próximos agendamentos
+              </Text>
+
+              <Text style={styles.sectionSubtitle}>
+                Serviços registrados para o seu
+                veículo
+              </Text>
+            </View>
+
+            <View style={styles.totalBadge}>
+              <Text style={styles.totalNumber}>
+                {agendamentos.length}
+              </Text>
+
+              <Text style={styles.totalText}>
+                {agendamentos.length === 1
+                  ? "agendamento"
+                  : "agendamentos"}
+              </Text>
+            </View>
+          </View>
+
+          {agendamentos.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>
+                Nenhum agendamento encontrado
+              </Text>
+
+              <Text style={styles.emptyText}>
+                Você ainda não possui serviços
+                agendados na rede autorizada Ford.
+              </Text>
+            </View>
+          ) : (
+            agendamentos.map((agendamento) => (
+              <View
+                key={agendamento.id}
+                style={styles.appointmentCard}
+              >
+                <View
+                  style={[
+                    styles.appointmentHeader,
+                    isMobile &&
+                      styles.appointmentHeaderMobile,
+                  ]}
+                >
+                  <View
+                    style={
+                      styles.appointmentHeaderContent
+                    }
+                  >
+                    <Text style={styles.serviceName}>
+                      {agendamento.servico}
+                    </Text>
+
+                    <Text style={styles.dealership}>
+                      {agendamento.unidade}
+                    </Text>
+                  </View>
+
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.statusText}>
+                      {agendamento.status}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View
+                  style={[
+                    styles.detailsRow,
+                    isMobile &&
+                      styles.detailsRowMobile,
+                  ]}
+                >
+                  <View style={styles.detailBox}>
+                    <Text style={styles.detailLabel}>
+                      Data
+                    </Text>
+
+                    <Text style={styles.detailValue}>
+                      {agendamento.data}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailBox}>
+                    <Text style={styles.detailLabel}>
+                      Horário
+                    </Text>
+
+                    <Text style={styles.detailValue}>
+                      {agendamento.horario}
+                    </Text>
+                  </View>
+                </View>
+
+                {agendamento.observacao ? (
+                  <View
+                    style={styles.observationBox}
+                  >
+                    <Text
+                      style={
+                        styles.observationLabel
+                      }
+                    >
+                      Observação
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.observationText
+                      }
+                    >
+                      {agendamento.observacao}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ))
+          )}
+
+          {/* NOVO AGENDAMENTO */}
+          <TouchableOpacity
+            style={styles.newAppointmentButton}
+            onPress={() =>
+              router.push(
+                "/agendamento?id=1&origem=cliente"
+              )
+            }
+          >
+            <Text
+              style={
+                styles.newAppointmentButtonText
+              }
+            >
+              Agendar nova revisão
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
 
       {/* AJUDA */}
       <View style={styles.helpCard}>
@@ -142,7 +319,8 @@ export default function MeusAgendamentos() {
         </Text>
 
         <Text style={styles.helpText}>
-          Entre em contato com a unidade Ford responsável pelo atendimento.
+          Entre em contato com a unidade Ford
+          responsável pelo atendimento.
         </Text>
       </View>
     </ScrollView>
@@ -175,6 +353,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 20,
     marginBottom: 28,
+  },
+
+  headerMobile: {
+    flexDirection: "column",
   },
 
   headerContent: {
@@ -247,11 +429,53 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 20,
+    marginBottom: 16,
+  },
+
+  sectionHeaderMobile: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+  },
+
   sectionTitle: {
     color: "#FFFFFF",
     fontSize: 23,
     fontWeight: "900",
-    marginBottom: 16,
+  },
+
+  sectionSubtitle: {
+    color: "#7F93AD",
+    fontSize: 13,
+    marginTop: 5,
+  },
+
+  totalBadge: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+    backgroundColor: "#07162E",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#173B70",
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+  },
+
+  totalNumber: {
+    color: "#4C8DFF",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
+  totalText: {
+    color: "#9FB2CC",
+    fontSize: 12,
+    fontWeight: "700",
   },
 
   appointmentCard: {
@@ -355,6 +579,64 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
+  emptyCard: {
+    backgroundColor: "#07162E",
+    borderRadius: 20,
+    padding: 26,
+    borderWidth: 1,
+    borderColor: "#0D2A52",
+    marginBottom: 18,
+  },
+
+  emptyTitle: {
+    color: "#FFFFFF",
+    fontSize: 19,
+    fontWeight: "900",
+    marginBottom: 8,
+  },
+
+  emptyText: {
+    color: "#9FB2CC",
+    fontSize: 14,
+    lineHeight: 21,
+  },
+
+  errorCard: {
+    backgroundColor: "#07162E",
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "#783838",
+    marginBottom: 24,
+  },
+
+  errorTitle: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "900",
+    marginBottom: 8,
+  },
+
+  errorText: {
+    color: "#C5A1A1",
+    fontSize: 14,
+    lineHeight: 21,
+  },
+
+  retryButton: {
+    marginTop: 16,
+    alignSelf: "flex-start",
+    backgroundColor: "#0057FF",
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+  },
+
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+  },
+
   newAppointmentButton: {
     backgroundColor: "#0057FF",
     paddingVertical: 16,
@@ -389,5 +671,20 @@ const styles = StyleSheet.create({
     color: "#9FB2CC",
     fontSize: 14,
     lineHeight: 21,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    minHeight: "100%",
+    backgroundColor: "#020B18",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 14,
+  },
+
+  loadingText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

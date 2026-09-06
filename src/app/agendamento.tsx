@@ -22,37 +22,40 @@ import {
 } from "../services/api";
 
 export default function Agendamento() {
-  const { id } = useLocalSearchParams();
-  const { width } = useWindowDimensions();
+  const params = useLocalSearchParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const origem = Array.isArray(params.origem) ? params.origem[0] : params.origem;
 
+  const { width } = useWindowDimensions();
   const isMobile = width < 768;
+  const veioDoCliente = origem === "cliente";
 
   const [cliente, setCliente] = useState<any>(null);
   const [carregando, setCarregando] = useState(true);
-
+  const [enviando, setEnviando] = useState(false);
   const [concessionarias, setConcessionarias] = useState<string[]>([]);
-
   const [unidade, setUnidade] = useState("");
   const [dataSelecionada, setDataSelecionada] = useState(new Date());
   const [horarioSelecionado, setHorarioSelecionado] = useState(new Date());
-
   const [dataWeb, setDataWeb] = useState("");
   const [horarioWeb, setHorarioWeb] = useState("");
-
   const [servico, setServico] = useState("");
   const [observacao, setObservacao] = useState("");
-
   const [mostrarCalendario, setMostrarCalendario] = useState(false);
   const [mostrarHorario, setMostrarHorario] = useState(false);
-
   const [confirmado, setConfirmado] = useState(false);
   const [erroFormulario, setErroFormulario] = useState("");
 
   useEffect(() => {
     async function carregarDados() {
       try {
+        if (!id) {
+          setCliente(null);
+          return;
+        }
+
         const [dadosCliente, dadosConcessionarias] = await Promise.all([
-          buscarClientePorId(id as string),
+          buscarClientePorId(id),
           buscarConcessionarias(),
         ]);
 
@@ -81,9 +84,7 @@ export default function Agendamento() {
 
   function formatarDataWeb(data: string) {
     if (!data) return "";
-
     const partes = data.split("-");
-
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
   }
 
@@ -103,6 +104,18 @@ export default function Agendamento() {
     }
   }
 
+  function voltar() {
+    if (veioDoCliente) {
+      router.replace("/meus-agendamentos");
+      return;
+    }
+
+    router.replace({
+      pathname: "/detalhes",
+      params: { id: cliente.id },
+    });
+  }
+
   async function confirmarAgendamento() {
     const dataFinal =
       Platform.OS === "web"
@@ -114,19 +127,13 @@ export default function Agendamento() {
         ? horarioWeb
         : formatarHorario(horarioSelecionado);
 
-    if (
-      !unidade ||
-      !servico ||
-      !dataFinal ||
-      !horarioFinal
-    ) {
-      setErroFormulario(
-        "Preencha todos os campos obrigatórios."
-      );
+    if (!unidade || !servico || !dataFinal || !horarioFinal) {
+      setErroFormulario("Preencha todos os campos obrigatórios.");
       return;
     }
 
     try {
+      setEnviando(true);
       setErroFormulario("");
 
       await criarAgendamento({
@@ -141,7 +148,11 @@ export default function Agendamento() {
       setConfirmado(true);
 
       setTimeout(() => {
-        router.replace("/agendamentos");
+        if (veioDoCliente) {
+          router.replace("/meus-agendamentos");
+        } else {
+          router.replace("/agendamentos");
+        }
       }, 1200);
     } catch (erro: any) {
       console.log("Erro ao criar agendamento:", erro);
@@ -149,6 +160,8 @@ export default function Agendamento() {
       setErroFormulario(
         erro.message || "Não foi possível criar o agendamento."
       );
+
+      setEnviando(false);
     }
   }
 
@@ -200,15 +213,8 @@ export default function Agendamento() {
       }
       showsVerticalScrollIndicator={false}
     >
-      <TouchableOpacity
-        onPress={() =>
-          router.replace({
-            pathname: "/detalhes",
-            params: { id: cliente.id },
-          })
-        }
-      >
-        <Text style={styles.back}>← Voltar</Text>
+      <TouchableOpacity onPress={voltar}>
+        <Text style={styles.back}>Voltar</Text>
       </TouchableOpacity>
 
       <Text
@@ -226,7 +232,9 @@ export default function Agendamento() {
           isMobile && styles.subtitleMobile,
         ]}
       >
-        Preencha as informações para registrar o agendamento do cliente.
+        {veioDoCliente
+          ? "Escolha a unidade, a data e o serviço para agendar sua revisão."
+          : "Preencha as informações para registrar o agendamento do cliente."}
       </Text>
 
       <View
@@ -321,10 +329,12 @@ export default function Agendamento() {
               <>
                 <TouchableOpacity
                   style={styles.selectorButton}
-                  onPress={() => setMostrarCalendario(true)}
+                  onPress={() =>
+                    setMostrarCalendario(true)
+                  }
                 >
                   <Text style={styles.selectorText}>
-                    {formatarData(dataSelecionada)} 📅
+                    {formatarData(dataSelecionada)}
                   </Text>
                 </TouchableOpacity>
 
@@ -370,10 +380,12 @@ export default function Agendamento() {
               <>
                 <TouchableOpacity
                   style={styles.selectorButton}
-                  onPress={() => setMostrarHorario(true)}
+                  onPress={() =>
+                    setMostrarHorario(true)
+                  }
                 >
                   <Text style={styles.selectorText}>
-                    {formatarHorario(horarioSelecionado)} 🕐
+                    {formatarHorario(horarioSelecionado)}
                   </Text>
                 </TouchableOpacity>
 
@@ -453,7 +465,11 @@ export default function Agendamento() {
             styles.input,
             styles.textArea,
           ]}
-          placeholder="Ex: Cliente solicitou avaliação dos freios."
+          placeholder={
+            veioDoCliente
+              ? "Ex: Gostaria que verificassem os freios."
+              : "Ex: Cliente solicitou avaliação dos freios."
+          }
           placeholderTextColor="#7F91AA"
           multiline
           value={observacao}
@@ -469,11 +485,17 @@ export default function Agendamento() {
         )}
 
         <TouchableOpacity
-          style={styles.button}
+          style={[
+            styles.button,
+            enviando && styles.buttonDisabled,
+          ]}
           onPress={confirmarAgendamento}
+          disabled={enviando}
         >
           <Text style={styles.buttonText}>
-            Confirmar agendamento
+            {enviando
+              ? "Confirmando..."
+              : "Confirmar agendamento"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -495,7 +517,9 @@ export default function Agendamento() {
           </Text>
 
           <Text style={styles.successText}>
-            Agendamento criado com sucesso.
+            {veioDoCliente
+              ? "Sua revisão foi agendada com sucesso."
+              : "Agendamento criado com sucesso."}
           </Text>
         </View>
       )}
@@ -683,6 +707,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     marginTop: 6,
+  },
+
+  buttonDisabled: {
+    opacity: 0.65,
   },
 
   buttonText: {
