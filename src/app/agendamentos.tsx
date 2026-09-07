@@ -10,30 +10,53 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-import { buscarAgendamentos } from "../services/api";
+import {
+  buscarAgendamentos,
+  concluirAgendamento,
+} from "../services/api";
 
 export default function Agendamentos() {
   const { width } = useWindowDimensions();
-
   const isMobile = width < 768;
 
   const [agendamentos, setAgendamentos] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [concluindoId, setConcluindoId] = useState<number | null>(null);
+
+  async function carregarAgendamentos() {
+    try {
+      const dados = await buscarAgendamentos();
+      setAgendamentos(dados);
+    } catch (erro) {
+      console.log("Erro ao buscar agendamentos:", erro);
+    } finally {
+      setCarregando(false);
+    }
+  }
 
   useEffect(() => {
-    async function carregarAgendamentos() {
-      try {
-        const dados = await buscarAgendamentos();
-        setAgendamentos(dados);
-      } catch (erro) {
-        console.log("Erro ao buscar agendamentos:", erro);
-      } finally {
-        setCarregando(false);
-      }
-    }
-
     carregarAgendamentos();
   }, []);
+
+  async function handleConcluirAgendamento(id: number) {
+    try {
+      setConcluindoId(id);
+
+      await concluirAgendamento(String(id));
+
+      await carregarAgendamentos();
+    } catch (erro: any) {
+      console.log("Erro ao concluir agendamento:", erro);
+
+      if (erro?.message) {
+        alert(erro.message);
+      } else {
+        alert("Erro ao concluir agendamento");
+      }
+    } finally {
+      setConcluindoId(null);
+    }
+  }
 
   if (carregando) {
     return (
@@ -66,39 +89,81 @@ export default function Agendamentos() {
         <Text style={styles.emptyText}>Nenhum agendamento encontrado.</Text>
       )}
 
-      {agendamentos.map((item) => (
-        <View key={item.id} style={[styles.card, isMobile && styles.cardMobile]}>
-          <View style={[styles.header, isMobile && styles.headerMobile]}>
-            <View style={styles.headerText}>
-              <Text style={[styles.clientName, isMobile && styles.clientNameMobile]}>
-                {item.cliente}
+      {agendamentos.map((item) => {
+        const concluido =
+          String(item.status || "").toUpperCase() === "CONCLUÍDO";
+
+        const concluindo = concluindoId === item.id;
+
+        return (
+          <View
+            key={item.id}
+            style={[styles.card, isMobile && styles.cardMobile]}
+          >
+            <View style={[styles.header, isMobile && styles.headerMobile]}>
+              <View style={styles.headerText}>
+                <Text
+                  style={[
+                    styles.clientName,
+                    isMobile && styles.clientNameMobile,
+                  ]}
+                >
+                  {item.cliente}
+                </Text>
+
+                <Text style={styles.vehicle}>{item.veiculo}</Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statusBadge,
+                  concluido
+                    ? styles.concluido
+                    : item.status === "Confirmado"
+                    ? styles.confirmado
+                    : styles.pendente,
+                ]}
+              >
+                <Text style={styles.statusText}>{item.status}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.info}>Unidade: {item.unidade}</Text>
+            <Text style={styles.info}>Data: {item.data}</Text>
+            <Text style={styles.info}>Horário: {item.horario}</Text>
+            <Text style={styles.info}>Serviço: {item.servico}</Text>
+
+            {item.observacao ? (
+              <Text style={styles.info}>
+                Observação: {item.observacao}
               </Text>
+            ) : null}
 
-              <Text style={styles.vehicle}>{item.veiculo}</Text>
-            </View>
+            {!concluido && (
+              <TouchableOpacity
+                style={[
+                  styles.completeButton,
+                  concluindo && styles.completeButtonDisabled,
+                ]}
+                onPress={() => handleConcluirAgendamento(item.id)}
+                disabled={concluindo}
+              >
+                <Text style={styles.completeButtonText}>
+                  {concluindo ? "Concluindo..." : "Concluir serviço"}
+                </Text>
+              </TouchableOpacity>
+            )}
 
-            <View
-              style={[
-                styles.statusBadge,
-                item.status === "Confirmado"
-                  ? styles.confirmado
-                  : styles.pendente,
-              ]}
-            >
-              <Text style={styles.statusText}>{item.status}</Text>
-            </View>
+            {concluido && (
+              <View style={styles.retainedBox}>
+                <Text style={styles.retainedText}>
+                  Serviço concluído e cliente retido
+                </Text>
+              </View>
+            )}
           </View>
-
-          <Text style={styles.info}>Unidade: {item.unidade}</Text>
-          <Text style={styles.info}>Data: {item.data}</Text>
-          <Text style={styles.info}>Horário: {item.horario}</Text>
-          <Text style={styles.info}>Serviço: {item.servico}</Text>
-
-          {item.observacao ? (
-            <Text style={styles.info}>Observação: {item.observacao}</Text>
-          ) : null}
-        </View>
-      ))}
+        );
+      })}
     </ScrollView>
   );
 }
@@ -218,9 +283,47 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFB800",
   },
 
+  concluido: {
+    backgroundColor: "#1E5EFF",
+  },
+
   statusText: {
     color: "#FFFFFF",
     fontWeight: "900",
     fontSize: 13,
+  },
+
+  completeButton: {
+    backgroundColor: "#1E5EFF",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginTop: 14,
+    alignItems: "center",
+  },
+
+  completeButtonDisabled: {
+    opacity: 0.6,
+  },
+
+  completeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+
+  retainedBox: {
+    backgroundColor: "#0D2A52",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginTop: 14,
+  },
+
+  retainedText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800",
+    textAlign: "center",
   },
 });

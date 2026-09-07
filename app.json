@@ -1,16 +1,18 @@
 {
   "expo": {
-    "name": "Ford-Retain",
-    "slug": "Ford-Retain",
+    "name": "Ford Retain",
+    "slug": "ford-retain",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "fordretain",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.lorenzzodias.fordretain"
     },
     "android": {
+      "package": "com.lorenzzodias.fordretain",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

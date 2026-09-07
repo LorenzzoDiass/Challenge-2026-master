@@ -6,59 +6,129 @@ import {
   TouchableOpacity,
   ImageBackground,
   useWindowDimensions,
+  Animated,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { router } from "expo-router";
-import { buscarClientes } from "../services/api";
+import {
+  buscarAgendamentos,
+  buscarClientes,
+} from "../services/api";
 
 export default function Analytics() {
   const { width, height } = useWindowDimensions();
   const isMobile = width < 768;
 
   const [clientes, setClientes] = useState<any[]>([]);
+  const [agendamentos, setAgendamentos] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [relatorioGerado, setRelatorioGerado] = useState(false);
 
+  const animacaoBarra = useRef(
+    new Animated.Value(0)
+  ).current;
+
   useEffect(() => {
-    async function carregarClientes() {
+    async function carregarDados() {
       try {
-        const dados = await buscarClientes();
-        setClientes(dados);
+        const [dadosClientes, dadosAgendamentos] =
+          await Promise.all([
+            buscarClientes(),
+            buscarAgendamentos(),
+          ]);
+
+        setClientes(dadosClientes);
+        setAgendamentos(dadosAgendamentos);
       } catch (erro) {
-        console.log("Erro ao buscar clientes:", erro);
+        console.log(
+          "Erro ao buscar dados do Analytics:",
+          erro
+        );
       } finally {
         setCarregando(false);
       }
     }
 
-    carregarClientes();
+    carregarDados();
   }, []);
+
+  useEffect(() => {
+    if (!carregando && clientes.length > 0) {
+      animacaoBarra.setValue(0);
+
+      Animated.timing(animacaoBarra, {
+        toValue: 1,
+        duration: 1100,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [carregando, clientes, animacaoBarra]);
 
   const total = clientes.length;
 
   const alto = clientes.filter(
-    (cliente) => cliente.classificacaoRetain === "ALTO"
+    (cliente) =>
+      cliente.classificacaoRetain === "ALTO"
   ).length;
 
   const medio = clientes.filter(
-    (cliente) => cliente.classificacaoRetain === "MÉDIO"
+    (cliente) =>
+      cliente.classificacaoRetain === "MÉDIO"
   ).length;
 
   const baixo = clientes.filter(
-    (cliente) => cliente.classificacaoRetain === "BAIXO"
+    (cliente) =>
+      cliente.classificacaoRetain === "BAIXO"
   ).length;
 
   const emAtencao = alto + medio;
 
-  const agendados = clientes.filter(
-    (cliente) => cliente.status === "REVISÃO AGENDADA"
+  const clientesComAgendamento = new Set(
+    agendamentos
+      .map((item) => item.clienteId)
+      .filter(
+        (clienteId) =>
+          clienteId !== undefined &&
+          clienteId !== null
+      )
+      .map((clienteId) => String(clienteId))
+  );
+
+  const clientesComServicoConcluido = new Set(
+    agendamentos
+      .filter(
+        (item) =>
+          String(
+            item.status || ""
+          ).toUpperCase() === "CONCLUÍDO"
+      )
+      .map((item) => item.clienteId)
+      .filter(
+        (clienteId) =>
+          clienteId !== undefined &&
+          clienteId !== null
+      )
+      .map((clienteId) => String(clienteId))
+  );
+
+  const agendados = clientesComAgendamento.size;
+
+  const servicosConcluidos =
+    clientesComServicoConcluido.size;
+
+  const clientesRetidos = clientes.filter(
+    (cliente) =>
+      String(
+        cliente.status || ""
+      ).toUpperCase() === "CLIENTE RETIDO"
   ).length;
 
   const mediaKm =
     total > 0
       ? Math.round(
           clientes.reduce(
-            (soma, cliente) => soma + Number(cliente.km || 0),
+            (soma, cliente) =>
+              soma + Number(cliente.km || 0),
             0
           ) / total
         )
@@ -69,23 +139,57 @@ export default function Analytics() {
       ? Math.round(
           clientes.reduce(
             (soma, cliente) =>
-              soma + Number(cliente.retainScore || 0),
+              soma +
+              Number(cliente.retainScore || 0),
             0
           ) / total
         )
       : 0;
 
   const percentualAlto =
-    total > 0 ? Math.round((alto / total) * 100) : 0;
+    total > 0
+      ? Math.round((alto / total) * 100)
+      : 0;
 
   const percentualMedio =
-    total > 0 ? Math.round((medio / total) * 100) : 0;
+    total > 0
+      ? Math.round((medio / total) * 100)
+      : 0;
 
   const percentualBaixo =
-    total > 0 ? Math.round((baixo / total) * 100) : 0;
+    total > 0
+      ? Math.round((baixo / total) * 100)
+      : 0;
+
+  const percentualAtencao =
+    total > 0
+      ? Math.round((emAtencao / total) * 100)
+      : 0;
 
   const percentualAgendados =
-    total > 0 ? Math.round((agendados / total) * 100) : 0;
+    total > 0
+      ? Math.round((agendados / total) * 100)
+      : 0;
+
+  const percentualServicosConcluidos =
+    total > 0
+      ? Math.round(
+          (servicosConcluidos / total) * 100
+        )
+      : 0;
+
+  const percentualRetorno =
+    total > 0
+      ? Math.round(
+          (clientesRetidos / total) * 100
+        )
+      : 0;
+
+  const larguraAnimada =
+    animacaoBarra.interpolate({
+      inputRange: [0, 1],
+      outputRange: ["0%", "100%"],
+    });
 
   const cidadesCriticas = Array.from(
     new Set(
@@ -112,7 +216,15 @@ export default function Analytics() {
     .slice(0, 3);
 
   const insightRetain =
-    alto > 0
+    clientesRetidos > 0
+      ? `${clientesRetidos} cliente${
+          clientesRetidos === 1 ? "" : "s"
+        } já concluiu${
+          clientesRetidos === 1 ? "" : "íram"
+        } o ciclo de retenção e retornou${
+          clientesRetidos === 1 ? "" : "aram"
+        } à rede autorizada. O indicador de retorno atual é de ${percentualRetorno}% da base monitorada.`
+      : alto > 0
       ? `${alto} cliente${
           alto === 1 ? "" : "s"
         } apresenta${
@@ -151,7 +263,9 @@ export default function Analytics() {
       >
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.replace("/dashboard")}
+          onPress={() =>
+            router.replace("/dashboard")
+          }
         >
           <Text style={styles.back}>
             Voltar
@@ -250,21 +364,21 @@ export default function Analytics() {
 
               <View style={styles.card}>
                 <Text style={styles.label}>
-                  Revisões agendadas
+                  Retorno à rede
                 </Text>
 
                 <Text
                   style={[
                     styles.number,
-                    styles.blue,
+                    styles.green,
                     isMobile && styles.numberMobile,
                   ]}
                 >
-                  {agendados}
+                  {percentualRetorno}%
                 </Text>
 
                 <Text style={styles.cardHint}>
-                  {percentualAgendados}% da base
+                  Indicador operacional
                 </Text>
               </View>
             </View>
@@ -278,7 +392,8 @@ export default function Analytics() {
               <Text
                 style={[
                   styles.sectionTitle,
-                  isMobile && styles.sectionTitleMobile,
+                  isMobile &&
+                    styles.sectionTitleMobile,
                 ]}
               >
                 Distribuição do Retain Score
@@ -289,41 +404,51 @@ export default function Analytics() {
               </Text>
 
               <View style={styles.progressWrapper}>
-                <View
+                <Animated.View
                   style={[
-                    styles.progressBar,
-                    styles.redBar,
+                    styles.progressAnimation,
                     {
-                      width: `${percentualAlto}%`,
+                      width: larguraAnimada,
                     },
                   ]}
-                />
+                >
+                  <View
+                    style={[
+                      styles.progressBar,
+                      styles.redBar,
+                      {
+                        width: `${percentualAlto}%`,
+                      },
+                    ]}
+                  />
 
-                <View
-                  style={[
-                    styles.progressBar,
-                    styles.yellowBar,
-                    {
-                      width: `${percentualMedio}%`,
-                    },
-                  ]}
-                />
+                  <View
+                    style={[
+                      styles.progressBar,
+                      styles.yellowBar,
+                      {
+                        width: `${percentualMedio}%`,
+                      },
+                    ]}
+                  />
 
-                <View
-                  style={[
-                    styles.progressBar,
-                    styles.greenBar,
-                    {
-                      width: `${percentualBaixo}%`,
-                    },
-                  ]}
-                />
+                  <View
+                    style={[
+                      styles.progressBar,
+                      styles.greenBar,
+                      {
+                        width: `${percentualBaixo}%`,
+                      },
+                    ]}
+                  />
+                </Animated.View>
               </View>
 
               <View
                 style={[
                   styles.riskGrid,
-                  isMobile && styles.riskGridMobile,
+                  isMobile &&
+                    styles.riskGridMobile,
                 ]}
               >
                 <View style={styles.riskItem}>
@@ -393,21 +518,235 @@ export default function Analytics() {
 
             <View
               style={[
-                styles.twoColumns,
-                isMobile && styles.twoColumnsMobile,
+                styles.section,
+                isMobile && styles.sectionMobile,
               ]}
             >
-              <View style={styles.sectionSmall}>
+              <View
+                style={[
+                  styles.funnelHeader,
+                  isMobile &&
+                    styles.funnelHeaderMobile,
+                ]}
+              >
+                <View style={styles.funnelTitleArea}>
+                  <Text
+                    style={[
+                      styles.sectionTitle,
+                      isMobile &&
+                        styles.sectionTitleMobile,
+                    ]}
+                  >
+                    Funil de retenção
+                  </Text>
+
+                  <Text
+                    style={styles.sectionDescription}
+                  >
+                    Conversão da base monitorada até o retorno à rede autorizada
+                  </Text>
+                </View>
+
+                <View style={styles.prototypeBadge}>
+                  <Text
+                    style={styles.prototypeBadgeText}
+                  >
+                    INDICADOR DO PROTÓTIPO
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.funnelItem}>
+                <View style={styles.funnelTop}>
+                  <Text style={styles.funnelLabel}>
+                    Base monitorada
+                  </Text>
+
+                  <Text style={styles.funnelValue}>
+                    {total} • 100%
+                  </Text>
+                </View>
+
+                <View style={styles.funnelTrack}>
+                  <View
+                    style={[
+                      styles.funnelFill,
+                      styles.funnelBlue,
+                      {
+                        width: "100%",
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.funnelItem}>
+                <View style={styles.funnelTop}>
+                  <Text style={styles.funnelLabel}>
+                    Clientes em atenção
+                  </Text>
+
+                  <Text style={styles.funnelValue}>
+                    {emAtencao} •{" "}
+                    {percentualAtencao}%
+                  </Text>
+                </View>
+
+                <View style={styles.funnelTrack}>
+                  <View
+                    style={[
+                      styles.funnelFill,
+                      styles.funnelOrange,
+                      {
+                        width: `${percentualAtencao}%` as any,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.funnelItem}>
+                <View style={styles.funnelTop}>
+                  <Text style={styles.funnelLabel}>
+                    Agendamentos gerados
+                  </Text>
+
+                  <Text style={styles.funnelValue}>
+                    {agendados} •{" "}
+                    {percentualAgendados}%
+                  </Text>
+                </View>
+
+                <View style={styles.funnelTrack}>
+                  <View
+                    style={[
+                      styles.funnelFill,
+                      styles.funnelLightBlue,
+                      {
+                        width: `${percentualAgendados}%` as any,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.funnelItem}>
+                <View style={styles.funnelTop}>
+                  <Text style={styles.funnelLabel}>
+                    Serviços concluídos
+                  </Text>
+
+                  <Text style={styles.funnelValue}>
+                    {servicosConcluidos} •{" "}
+                    {percentualServicosConcluidos}%
+                  </Text>
+                </View>
+
+                <View style={styles.funnelTrack}>
+                  <View
+                    style={[
+                      styles.funnelFill,
+                      styles.funnelGreen,
+                      {
+                        width: `${percentualServicosConcluidos}%` as any,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.funnelItem,
+                  styles.funnelItemLast,
+                ]}
+              >
+                <View style={styles.funnelTop}>
+                  <Text
+                    style={styles.funnelLabelStrong}
+                  >
+                    Clientes retidos
+                  </Text>
+
+                  <Text
+                    style={styles.funnelValueStrong}
+                  >
+                    {clientesRetidos} •{" "}
+                    {percentualRetorno}%
+                  </Text>
+                </View>
+
+                <View style={styles.funnelTrack}>
+                  <View
+                    style={[
+                      styles.funnelFill,
+                      styles.funnelGreen,
+                      {
+                        width: `${percentualRetorno}%` as any,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.returnBox,
+                  isMobile &&
+                    styles.returnBoxMobile,
+                ]}
+              >
+                <View style={styles.returnTextArea}>
+                  <Text style={styles.returnLabel}>
+                    Indicador de retorno à rede
+                  </Text>
+
+                  <Text
+                    style={styles.returnDescription}
+                  >
+                    Clientes que concluíram o ciclo de retenção na base monitorada
+                  </Text>
+                </View>
+
+                <Text style={styles.returnValue}>
+                  {percentualRetorno}%
+                </Text>
+              </View>
+
+              <Text style={styles.vinShareNote}>
+                No protótipo, o retorno à rede funciona como indicador operacional de retenção. Em produção, a integração com dados oficiais de pós-venda permitiria acompanhar o VIN Share real.
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.twoColumns,
+                isMobile &&
+                  styles.twoColumnsMobile,
+              ]}
+            >
+              <View
+                style={[
+                  styles.sectionSmall,
+                  !isMobile &&
+                    styles.sectionSmallDesktop,
+                  isMobile &&
+                    styles.sectionSmallMobile,
+                ]}
+              >
                 <Text
                   style={[
                     styles.sectionTitle,
-                    isMobile && styles.sectionTitleMobile,
+                    isMobile &&
+                      styles.sectionTitleMobile,
                   ]}
                 >
                   Clientes críticos
                 </Text>
 
-                <Text style={styles.sectionDescription}>
+                <Text
+                  style={styles.sectionDescription}
+                >
                   Maiores Retain Scores da base
                 </Text>
 
@@ -420,10 +759,13 @@ export default function Analytics() {
                     (cliente, index) => (
                       <TouchableOpacity
                         key={cliente.id}
-                        style={styles.criticalClient}
+                        style={
+                          styles.criticalClient
+                        }
                         onPress={() =>
                           router.push({
-                            pathname: "/detalhes",
+                            pathname:
+                              "/detalhes",
                             params: {
                               id: String(
                                 cliente.id
@@ -432,7 +774,11 @@ export default function Analytics() {
                           })
                         }
                       >
-                        <View>
+                        <View
+                          style={
+                            styles.criticalTextArea
+                          }
+                        >
                           <Text
                             style={
                               styles.criticalClientName
@@ -464,17 +810,28 @@ export default function Analytics() {
                 )}
               </View>
 
-              <View style={styles.sectionSmall}>
+              <View
+                style={[
+                  styles.sectionSmall,
+                  !isMobile &&
+                    styles.sectionSmallDesktop,
+                  isMobile &&
+                    styles.sectionSmallMobile,
+                ]}
+              >
                 <Text
                   style={[
                     styles.sectionTitle,
-                    isMobile && styles.sectionTitleMobile,
+                    isMobile &&
+                      styles.sectionTitleMobile,
                   ]}
                 >
                   Indicadores operacionais
                 </Text>
 
-                <Text style={styles.sectionDescription}>
+                <Text
+                  style={styles.sectionDescription}
+                >
                   Resumo da base monitorada
                 </Text>
 
@@ -500,7 +857,7 @@ export default function Analytics() {
 
                 <View style={styles.metricRow}>
                   <Text style={styles.metricLabel}>
-                    Revisões agendadas
+                    Agendamentos gerados
                   </Text>
 
                   <Text style={styles.metricValue}>
@@ -510,11 +867,46 @@ export default function Analytics() {
 
                 <View style={styles.metricRow}>
                   <Text style={styles.metricLabel}>
-                    Clientes em atenção
+                    Serviços concluídos
                   </Text>
 
                   <Text style={styles.metricValue}>
-                    {emAtencao}
+                    {servicosConcluidos}
+                  </Text>
+                </View>
+
+                <View style={styles.metricRow}>
+                  <Text style={styles.metricLabel}>
+                    Clientes retidos
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.metricValue,
+                      styles.green,
+                    ]}
+                  >
+                    {clientesRetidos}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.metricRow,
+                    styles.metricRowLast,
+                  ]}
+                >
+                  <Text style={styles.metricLabel}>
+                    Retorno à rede
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.metricValue,
+                      styles.green,
+                    ]}
+                  >
+                    {percentualRetorno}%
                   </Text>
                 </View>
               </View>
@@ -523,10 +915,17 @@ export default function Analytics() {
             <View
               style={[
                 styles.insightBox,
-                isMobile && styles.insightBoxMobile,
+                isMobile &&
+                  styles.insightBoxMobile,
               ]}
             >
-              <View style={styles.insightHeader}>
+              <View
+                style={[
+                  styles.insightHeader,
+                  isMobile &&
+                    styles.insightHeaderMobile,
+                ]}
+              >
                 <Text
                   style={[
                     styles.insightTitle,
@@ -538,9 +937,7 @@ export default function Analytics() {
                 </Text>
 
                 <View style={styles.modelBadge}>
-                  <Text
-                    style={styles.modelBadgeText}
-                  >
+                  <Text style={styles.modelBadgeText}>
                     MODELO EXPLICÁVEL
                   </Text>
                 </View>
@@ -559,7 +956,9 @@ export default function Analytics() {
                 )
               }
             >
-              <Text style={styles.reportButtonText}>
+              <Text
+                style={styles.reportButtonText}
+              >
                 {relatorioGerado
                   ? "Ocultar relatório"
                   : "Gerar relatório de retenção"}
@@ -580,23 +979,34 @@ export default function Analytics() {
 
                 <Text style={styles.reportText}>
                   A base monitorada possui {total} cliente
-                  {total === 1 ? "" : "s"}, com Retain Score
-                  médio de {mediaRetainScore}%.
+                  {total === 1 ? "" : "s"}, com Retain Score médio de{" "}
+                  {mediaRetainScore}%.
                 </Text>
 
                 <Text style={styles.reportText}>
                   Atualmente, {alto} cliente
                   {alto === 1 ? "" : "s"} está
                   {alto === 1 ? "" : "o"} em alto risco,{" "}
-                  {medio} em médio risco e {baixo} em baixo
-                  risco.
+                  {medio} em médio risco e {baixo} em baixo risco.
                 </Text>
 
                 <Text style={styles.reportText}>
-                  Existem {agendados} revisão
-                  {agendados === 1 ? "" : "ões"} agendada
+                  Foram gerados {agendados} agendamento
                   {agendados === 1 ? "" : "s"}, representando{" "}
                   {percentualAgendados}% da base monitorada.
+                </Text>
+
+                <Text style={styles.reportText}>
+                  Foram concluídos {servicosConcluidos} serviço
+                  {servicosConcluidos === 1 ? "" : "s"} na rede autorizada, correspondendo a{" "}
+                  {percentualServicosConcluidos}% da base.
+                </Text>
+
+                <Text style={styles.reportText}>
+                  O indicador de retorno à rede está em{" "}
+                  {percentualRetorno}%, com {clientesRetidos} cliente
+                  {clientesRetidos === 1 ? "" : "s"} retido
+                  {clientesRetidos === 1 ? "" : "s"}.
                 </Text>
 
                 <Text style={styles.reportText}>
@@ -605,10 +1015,11 @@ export default function Analytics() {
                 </Text>
 
                 <Text style={styles.reportText}>
-                  Recomendação operacional: priorizar clientes
-                  com Retain Score alto, acompanhar os clientes
-                  de médio risco e monitorar a conversão das
-                  ações de retenção em novos agendamentos.
+                  Recomendação operacional: priorizar clientes com Retain Score alto, acompanhar os clientes de médio risco e medir a conversão entre contato, agendamento, conclusão do serviço e retenção.
+                </Text>
+
+                <Text style={styles.reportNote}>
+                  O indicador de retorno à rede apresentado nesta versão é uma métrica operacional do protótipo. Com integração aos dados oficiais da rede autorizada, a solução pode apoiar o acompanhamento do VIN Share real.
                 </Text>
               </View>
             )}
@@ -641,9 +1052,9 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
   scrollContentMobile: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 17,
     paddingTop: 20,
-    paddingBottom: 40,
+    paddingBottom: 50,
   },
   backButton: {
     alignSelf: "flex-start",
@@ -720,8 +1131,8 @@ const styles = StyleSheet.create({
   orange: {
     color: "#FFB800",
   },
-  blue: {
-    color: "#65A0FF",
+  green: {
+    color: "#1ED760",
   },
   section: {
     backgroundColor: "rgba(9, 19, 36, 0.88)",
@@ -735,13 +1146,18 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   sectionSmall: {
-    flex: 1,
     backgroundColor: "rgba(9, 19, 36, 0.88)",
     borderRadius: 22,
     padding: 22,
     borderWidth: 1,
     borderColor: "rgba(101, 137, 187, 0.18)",
     marginBottom: 24,
+  },
+  sectionSmallDesktop: {
+    flex: 1,
+  },
+  sectionSmallMobile: {
+    width: "100%",
   },
   sectionTitle: {
     color: "#FFFFFF",
@@ -756,14 +1172,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 5,
     marginBottom: 18,
+    lineHeight: 18,
   },
   progressWrapper: {
-    flexDirection: "row",
     height: 14,
     borderRadius: 999,
     overflow: "hidden",
     backgroundColor: "#0D2A52",
     marginBottom: 20,
+  },
+  progressAnimation: {
+    height: "100%",
+    flexDirection: "row",
+    overflow: "hidden",
+    borderRadius: 999,
   },
   progressBar: {
     height: "100%",
@@ -819,13 +1241,144 @@ const styles = StyleSheet.create({
     color: "#93A8C3",
     fontSize: 13,
   },
+  funnelHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 14,
+    flexWrap: "wrap",
+  },
+  funnelHeaderMobile: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 0,
+  },
+  funnelTitleArea: {
+    flex: 1,
+  },
+  prototypeBadge: {
+    backgroundColor: "rgba(30, 215, 96, 0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(30, 215, 96, 0.30)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    marginBottom: 18,
+  },
+  prototypeBadgeText: {
+    color: "#65E58F",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+  },
+  funnelItem: {
+    marginBottom: 17,
+  },
+  funnelItemLast: {
+    marginBottom: 24,
+  },
+  funnelTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  funnelLabel: {
+    color: "#B7C6DA",
+    fontSize: 13,
+    fontWeight: "700",
+    flexShrink: 1,
+  },
+  funnelLabelStrong: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+    flexShrink: 1,
+  },
+  funnelValue: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+    flexShrink: 0,
+  },
+  funnelValueStrong: {
+    color: "#1ED760",
+    fontSize: 15,
+    fontWeight: "900",
+    flexShrink: 0,
+  },
+  funnelTrack: {
+    height: 9,
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  funnelFill: {
+    height: "100%",
+    borderRadius: 999,
+  },
+  funnelBlue: {
+    backgroundColor: "#0057FF",
+  },
+  funnelLightBlue: {
+    backgroundColor: "#65A0FF",
+  },
+  funnelOrange: {
+    backgroundColor: "#FFB800",
+  },
+  funnelGreen: {
+    backgroundColor: "#1ED760",
+  },
+  returnBox: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 18,
+    backgroundColor: "rgba(30, 215, 96, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(30, 215, 96, 0.25)",
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 14,
+  },
+  returnBoxMobile: {
+    alignItems: "flex-start",
+  },
+  returnTextArea: {
+    flex: 1,
+  },
+  returnLabel: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "900",
+    marginBottom: 4,
+  },
+  returnDescription: {
+    color: "#8FA5BF",
+    fontSize: 11,
+    lineHeight: 17,
+  },
+  returnValue: {
+    color: "#1ED760",
+    fontSize: 32,
+    fontWeight: "900",
+    flexShrink: 0,
+  },
+  vinShareNote: {
+    color: "#8095AF",
+    fontSize: 11,
+    lineHeight: 18,
+  },
   twoColumns: {
     flexDirection: "row",
     gap: 18,
+    alignItems: "flex-start",
   },
   twoColumnsMobile: {
     flexDirection: "column",
     gap: 0,
+    width: "100%",
   },
   criticalClient: {
     flexDirection: "row",
@@ -837,6 +1390,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.05)",
+    gap: 12,
+  },
+  criticalTextArea: {
+    flex: 1,
   },
   criticalClientName: {
     color: "#FFFFFF",
@@ -852,8 +1409,10 @@ const styles = StyleSheet.create({
     color: "#FF6B64",
     fontSize: 20,
     fontWeight: "900",
+    flexShrink: 0,
   },
   metricRow: {
+    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -862,14 +1421,21 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(255,255,255,0.06)",
     gap: 12,
   },
+  metricRowLast: {
+    borderBottomWidth: 0,
+  },
   metricLabel: {
     color: "#A9BAD0",
     fontSize: 13,
+    flex: 1,
+    lineHeight: 19,
   },
   metricValue: {
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "800",
+    flexShrink: 0,
+    textAlign: "right",
   },
   row: {
     color: "#D7E3F4",
@@ -894,6 +1460,11 @@ const styles = StyleSheet.create({
     gap: 14,
     flexWrap: "wrap",
     marginBottom: 12,
+  },
+  insightHeaderMobile: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 10,
   },
   insightTitle: {
     color: "#FFFFFF",
@@ -956,5 +1527,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 23,
     marginBottom: 10,
+  },
+  reportNote: {
+    color: "#8095AF",
+    fontSize: 11,
+    lineHeight: 18,
+    marginTop: 6,
   },
 });

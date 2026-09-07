@@ -147,7 +147,13 @@ export default function Dashboard() {
   return (
     <ImageBackground
       source={require("../assets/images/deshboard.bg.png")}
-      style={[styles.container, { width, minHeight: height }]}
+      style={[
+        styles.container,
+        {
+          width,
+          minHeight: height,
+        },
+      ]}
       imageStyle={styles.backgroundImage}
       resizeMode="cover"
     >
@@ -169,39 +175,46 @@ export default function Dashboard() {
         >
           <View
             style={[
-              styles.brandArea,
-              isMobile && styles.brandAreaMobile,
+              styles.headerTop,
+              isMobile && styles.headerTopMobile,
             ]}
           >
-            <Image
-              source={require("../assets/images/logo.fordd.png")}
+            <View
               style={[
-                styles.headerLogo,
-                isMobile && styles.headerLogoMobile,
+                styles.brandArea,
+                isMobile && styles.brandAreaMobile,
               ]}
-              resizeMode="contain"
-            />
-
-            <View style={styles.brandTextArea}>
-              <Text style={styles.productName}>Ford Retain</Text>
-
-              <Text
+            >
+              <Image
+                source={require("../assets/images/logo.fordd.png")}
                 style={[
-                  styles.subtitle,
-                  isMobile && styles.subtitleMobile,
+                  styles.headerLogo,
+                  isMobile && styles.headerLogoMobile,
                 ]}
-              >
-                Inteligência de pós-venda e retenção
-              </Text>
-            </View>
-          </View>
+                resizeMode="contain"
+              />
 
-          <View
-            style={[
-              styles.headerRight,
-              isMobile && styles.headerRightMobile,
-            ]}
-          >
+              <View style={styles.brandTextArea}>
+                <Text
+                  style={[
+                    styles.productName,
+                    isMobile && styles.productNameMobile,
+                  ]}
+                >
+                  Ford Retain
+                </Text>
+
+                <Text
+                  style={[
+                    styles.subtitle,
+                    isMobile && styles.subtitleMobile,
+                  ]}
+                >
+                  Inteligência de pós-venda e retenção
+                </Text>
+              </View>
+            </View>
+
             <View
               style={[
                 styles.userArea,
@@ -217,50 +230,62 @@ export default function Dashboard() {
               </View>
 
               <Text
-                style={styles.userName}
-                numberOfLines={1}
+                style={[
+                  styles.userName,
+                  isMobile && styles.userNameMobile,
+                ]}
               >
                 {usuario?.nome || "Equipe Pós-venda Ford"}
               </Text>
 
-              <Text
-                style={styles.userEmail}
-                numberOfLines={1}
+              <View
+                style={[
+                  styles.emailBox,
+                  isMobile && styles.emailBoxMobile,
+                ]}
               >
-                {usuario?.email || "funcionario@fordretain.com"}
-              </Text>
+                <Text
+                  style={[
+                    styles.userEmail,
+                    isMobile && styles.userEmailMobile,
+                  ]}
+                >
+                  {usuario?.email ||
+                    "funcionario@fordretain.com"}
+                </Text>
+              </View>
             </View>
+          </View>
 
-            <View
+          <View
+            style={[
+              styles.headerButtons,
+              isMobile && styles.headerButtonsMobile,
+            ]}
+          >
+            <TouchableOpacity
               style={[
-                styles.headerButtons,
-                isMobile && styles.headerButtonsMobile,
+                styles.headerButton,
+                isMobile && styles.headerButtonMobile,
               ]}
+              onPress={carregarClientes}
             >
-              <TouchableOpacity
-                style={[
-                  styles.headerButton,
-                  isMobile && styles.headerButtonMobile,
-                ]}
-                onPress={carregarClientes}
-              >
-                <Text style={styles.headerButtonText}>
-                  Atualizar
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.headerButtonText}>
+                Atualizar
+              </Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.logoutButton,
-                  isMobile && styles.headerButtonMobile,
-                ]}
-                onPress={sair}
-              >
-                <Text style={styles.logoutButtonText}>
-                  Sair
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[
+                styles.logoutButton,
+                isMobile && styles.headerButtonMobile,
+              ]}
+              onPress={sair}
+            >
+              <Text style={styles.logoutButtonText}>
+                Sair
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -281,7 +306,12 @@ export default function Dashboard() {
                   styles.cardsContainerStack,
               ]}
             >
-              <View style={[styles.card, styles.redCard]}>
+              <View
+                style={[
+                  styles.card,
+                  styles.redCard,
+                ]}
+              >
                 <View style={styles.cardHeaderLine}>
                   <View
                     style={[
@@ -309,7 +339,12 @@ export default function Dashboard() {
                 </Text>
               </View>
 
-              <View style={[styles.card, styles.yellowCard]}>
+              <View
+                style={[
+                  styles.card,
+                  styles.yellowCard,
+                ]}
+              >
                 <View style={styles.cardHeaderLine}>
                   <View
                     style={[
@@ -337,7 +372,12 @@ export default function Dashboard() {
                 </Text>
               </View>
 
-              <View style={[styles.card, styles.greenCard]}>
+              <View
+                style={[
+                  styles.card,
+                  styles.greenCard,
+                ]}
+              >
                 <View style={styles.cardHeaderLine}>
                   <View
                     style={[
@@ -389,22 +429,28 @@ export default function Dashboard() {
                   </Text>
 
                   <Text style={styles.sectionSubtitle}>
-                    Clientes priorizados automaticamente pelo Ford Retain Score
+                    Clientes priorizados automaticamente pelo
+                    Ford Retain Score
                   </Text>
                 </View>
 
                 <View
                   style={[
                     styles.leadsHeaderActions,
-                    isMobile && styles.leadsHeaderActionsMobile,
+                    isMobile &&
+                      styles.leadsHeaderActionsMobile,
                   ]}
                 >
                   <View style={styles.priorityCount}>
-                    <Text style={styles.priorityCountNumber}>
+                    <Text
+                      style={styles.priorityCountNumber}
+                    >
                       {clientesPrioritarios.length}
                     </Text>
 
-                    <Text style={styles.priorityCountText}>
+                    <Text
+                      style={styles.priorityCountText}
+                    >
                       em atenção
                     </Text>
                   </View>
@@ -415,7 +461,9 @@ export default function Dashboard() {
                       setMostrarLeads(!mostrarLeads)
                     }
                   >
-                    <Text style={styles.toggleLeadsButtonText}>
+                    <Text
+                      style={styles.toggleLeadsButtonText}
+                    >
                       {mostrarLeads
                         ? "Ocultar leads"
                         : "Ver leads"}
@@ -431,7 +479,9 @@ export default function Dashboard() {
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.filtersContainer}
+                    contentContainerStyle={
+                      styles.filtersContainer
+                    }
                   >
                     <TouchableOpacity
                       style={[
@@ -542,18 +592,25 @@ export default function Dashboard() {
                   <View style={styles.resultsHeader}>
                     <Text style={styles.resultsText}>
                       {clientesFiltrados.length} resultado
-                      {clientesFiltrados.length === 1 ? "" : "s"}
+                      {clientesFiltrados.length === 1
+                        ? ""
+                        : "s"}
                     </Text>
                   </View>
 
                   {leadsVisiveis.length === 0 ? (
                     <View style={styles.emptyLeads}>
-                      <Text style={styles.emptyLeadsTitle}>
+                      <Text
+                        style={styles.emptyLeadsTitle}
+                      >
                         Nenhum cliente encontrado
                       </Text>
 
-                      <Text style={styles.emptyLeadsText}>
-                        Não existem clientes para este filtro no momento.
+                      <Text
+                        style={styles.emptyLeadsText}
+                      >
+                        Não existem clientes para este
+                        filtro no momento.
                       </Text>
                     </View>
                   ) : (
@@ -562,19 +619,26 @@ export default function Dashboard() {
                         key={cliente.id}
                         style={[
                           styles.clientCard,
-                          isMobile && styles.clientCardMobile,
+                          isMobile &&
+                            styles.clientCardMobile,
                         ]}
                       >
                         <View style={styles.clientMain}>
                           <View style={styles.clientTop}>
                             <View
-                              style={styles.clientInfoWrapper}
+                              style={
+                                styles.clientInfoWrapper
+                              }
                             >
-                              <Text style={styles.clientName}>
+                              <Text
+                                style={styles.clientName}
+                              >
                                 {cliente.nome}
                               </Text>
 
-                              <Text style={styles.clientInfo}>
+                              <Text
+                                style={styles.clientInfo}
+                              >
                                 {cliente.modelo} •{" "}
                                 {Number(
                                   cliente.km
@@ -595,7 +659,9 @@ export default function Dashboard() {
                                   cliente.classificacaoRetain
                                 )}
                               >
-                                <Text style={styles.badgeText}>
+                                <Text
+                                  style={styles.badgeText}
+                                >
                                   {
                                     cliente.classificacaoRetain
                                   }
@@ -618,16 +684,21 @@ export default function Dashboard() {
                             </View>
                           </View>
 
-                          <View style={styles.clientDivider} />
+                          <View
+                            style={styles.clientDivider}
+                          />
 
                           <Text style={styles.detailLabel}>
                             Fatores de risco
                           </Text>
 
                           <View
-                            style={styles.factorsContainer}
+                            style={
+                              styles.factorsContainer
+                            }
                           >
-                            {cliente.fatoresRisco?.length > 0 ? (
+                            {cliente.fatoresRisco
+                              ?.length > 0 ? (
                               cliente.fatoresRisco.map(
                                 (
                                   fator: string,
@@ -635,10 +706,14 @@ export default function Dashboard() {
                                 ) => (
                                   <View
                                     key={`${cliente.id}-${index}`}
-                                    style={styles.factorBadge}
+                                    style={
+                                      styles.factorBadge
+                                    }
                                   >
                                     <Text
-                                      style={styles.factorText}
+                                      style={
+                                        styles.factorText
+                                      }
                                     >
                                       {fator}
                                     </Text>
@@ -647,9 +722,12 @@ export default function Dashboard() {
                               )
                             ) : (
                               <Text
-                                style={styles.noFactorsText}
+                                style={
+                                  styles.noFactorsText
+                                }
                               >
-                                Nenhum fator crítico identificado
+                                Nenhum fator crítico
+                                identificado
                               </Text>
                             )}
                           </View>
@@ -667,9 +745,7 @@ export default function Dashboard() {
                               <Text
                                 style={styles.actionText}
                               >
-                                {
-                                  cliente.acaoRecomendada
-                                }
+                                {cliente.acaoRecomendada}
                               </Text>
                             </View>
 
@@ -703,9 +779,14 @@ export default function Dashboard() {
                   )}
 
                   {clientesFiltrados.length > 5 && (
-                    <View style={styles.moreLeadsArea}>
-                      <Text style={styles.moreLeadsText}>
-                        Exibindo os 5 resultados com maior Retain Score
+                    <View
+                      style={styles.moreLeadsArea}
+                    >
+                      <Text
+                        style={styles.moreLeadsText}
+                      >
+                        Exibindo os 5 resultados com maior
+                        Retain Score
                       </Text>
 
                       <TouchableOpacity
@@ -740,7 +821,9 @@ export default function Dashboard() {
                   router.push("/agendamentos")
                 }
               >
-                <Text style={styles.secondaryButtonText}>
+                <Text
+                  style={styles.secondaryButtonText}
+                >
                   Ver Agendamentos
                 </Text>
               </TouchableOpacity>
@@ -751,7 +834,9 @@ export default function Dashboard() {
                   router.push("/clientes")
                 }
               >
-                <Text style={styles.primaryButtonText}>
+                <Text
+                  style={styles.primaryButtonText}
+                >
                   Ver Todos os Clientes
                 </Text>
               </TouchableOpacity>
@@ -762,7 +847,9 @@ export default function Dashboard() {
                   router.push("/analytics")
                 }
               >
-                <Text style={styles.secondaryButtonText}>
+                <Text
+                  style={styles.secondaryButtonText}
+                >
                   Ver Analytics & IA
                 </Text>
               </TouchableOpacity>
@@ -807,13 +894,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 32,
+    gap: 24,
     zIndex: 2,
   },
   headerMobile: {
     flexDirection: "column",
     alignItems: "stretch",
-    gap: 22,
+    gap: 16,
+  },
+  headerTop: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 28,
+  },
+  headerTopMobile: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
   },
   brandArea: {
     flexDirection: "row",
@@ -822,9 +923,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   brandAreaMobile: {
+    flex: 1,
     flexDirection: "column",
     alignItems: "flex-start",
     gap: 6,
+    minWidth: 0,
   },
   headerLogo: {
     width: 145,
@@ -844,39 +947,34 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
     marginBottom: 4,
   },
+  productNameMobile: {
+    fontSize: 23,
+  },
   subtitle: {
     color: "#93A8C3",
     fontSize: 15,
     lineHeight: 21,
   },
   subtitleMobile: {
-    fontSize: 14,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 28,
-  },
-  headerRightMobile: {
-    width: "100%",
-    flexDirection: "column",
-    alignItems: "stretch",
-    gap: 16,
+    fontSize: 13,
+    lineHeight: 19,
+    maxWidth: 190,
   },
   userArea: {
     alignItems: "flex-end",
     minWidth: 215,
   },
   userAreaMobile: {
-    alignItems: "flex-start",
+    flex: 1,
     minWidth: 0,
+    alignItems: "flex-end",
+    paddingTop: 4,
   },
   userStatusWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    marginBottom: 5,
+    gap: 6,
+    marginBottom: 6,
   },
   statusDot: {
     width: 7,
@@ -886,20 +984,47 @@ const styles = StyleSheet.create({
   },
   userStatusText: {
     color: "#7F96B3",
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "800",
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   userName: {
     color: "#FFFFFF",
-    fontSize: 15,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: "800",
-    marginBottom: 3,
+    marginBottom: 7,
+    textAlign: "right",
+  },
+  userNameMobile: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 5,
+    textAlign: "right",
+  },
+  emailBox: {
+    backgroundColor: "rgba(255,255,255,0.045)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  emailBoxMobile: {
+    alignSelf: "flex-end",
+    maxWidth: "100%",
+    paddingVertical: 5,
+    paddingHorizontal: 7,
   },
   userEmail: {
-    color: "#8FA4C0",
+    color: "#AFC0D4",
     fontSize: 12,
+    lineHeight: 17,
+  },
+  userEmailMobile: {
+    fontSize: 9,
+    lineHeight: 13,
   },
   headerButtons: {
     flexDirection: "row",

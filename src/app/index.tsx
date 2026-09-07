@@ -18,6 +18,7 @@ import {
 
 import {
   salvarUsuarioLogado,
+  salvarToken,
 } from "../services/sessionService";
 
 export default function HomeScreen() {
@@ -132,6 +133,12 @@ export default function HomeScreen() {
         email: usuario.email,
       });
 
+      if (!dados.token) {
+        throw new Error("Token de acesso não recebido.");
+      }
+
+      await salvarToken(dados.token);
+
       /*
        * Vai para o painel.
        */
@@ -145,7 +152,7 @@ export default function HomeScreen() {
 
       setErro(
         erro?.message ||
-          "Não foi possível realizar o login."
+        "Não foi possível realizar o login."
       );
     } finally {
       setEntrando(false);
@@ -200,7 +207,7 @@ export default function HomeScreen() {
         style={[
           styles.contentWrapper,
           isMobile &&
-            styles.contentWrapperMobile,
+          styles.contentWrapperMobile,
         ]}
       >
         {/* LADO ESQUERDO */}
@@ -209,7 +216,7 @@ export default function HomeScreen() {
           style={[
             styles.leftContent,
             isMobile &&
-              styles.leftContentMobile,
+            styles.leftContentMobile,
           ]}
         >
           <Text style={styles.badge}>
@@ -220,7 +227,7 @@ export default function HomeScreen() {
             style={[
               styles.heroTitle,
               isMobile &&
-                styles.heroTitleMobile,
+              styles.heroTitleMobile,
             ]}
           >
             Ford Retain
@@ -232,7 +239,7 @@ export default function HomeScreen() {
             style={[
               styles.heroText,
               isMobile &&
-                styles.heroTextMobile,
+              styles.heroTextMobile,
             ]}
           >
             Monitore clientes, acompanhe
@@ -248,7 +255,7 @@ export default function HomeScreen() {
           style={[
             styles.card,
             isMobile &&
-              styles.cardMobile,
+            styles.cardMobile,
           ]}
         >
           <Image
@@ -256,7 +263,7 @@ export default function HomeScreen() {
             style={[
               styles.logo,
               isMobile &&
-                styles.logoMobile,
+              styles.logoMobile,
             ]}
             resizeMode="contain"
           />
@@ -275,7 +282,7 @@ export default function HomeScreen() {
                 style={[
                   styles.cardTitle,
                   isMobile &&
-                    styles.cardTitleMobile,
+                  styles.cardTitleMobile,
                 ]}
               >
                 Ford Retain
@@ -405,7 +412,7 @@ export default function HomeScreen() {
                 style={[
                   styles.cardTitle,
                   isMobile &&
-                    styles.cardTitleMobile,
+                  styles.cardTitleMobile,
                 ]}
               >
                 Acesse o painel
@@ -425,7 +432,7 @@ export default function HomeScreen() {
                 style={[
                   styles.input,
                   erro &&
-                  !email.trim()
+                    !email.trim()
                     ? styles.inputError
                     : null,
                 ]}
@@ -447,7 +454,7 @@ export default function HomeScreen() {
                 style={[
                   styles.input,
                   erro &&
-                  !senha.trim()
+                    !senha.trim()
                     ? styles.inputError
                     : null,
                 ]}
@@ -483,7 +490,7 @@ export default function HomeScreen() {
                 style={[
                   styles.button,
                   entrando &&
-                    styles.buttonDisabled,
+                  styles.buttonDisabled,
                 ]}
                 onPress={fazerLogin}
                 disabled={entrando}

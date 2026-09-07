@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,30 +11,24 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-
 import {
   atualizarQuilometragem,
   buscarClientePorId,
 } from "../services/api";
+import { buscarImagemVeiculo } from "../utils/vehicleImages";
 
 export default function MeuFord() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-
   const CLIENTE_ID = "1";
 
+  const [cliente, setCliente] = useState<any>(null);
   const [quilometragem, setQuilometragem] = useState(0);
   const [novaQuilometragem, setNovaQuilometragem] = useState("");
   const [editandoKm, setEditandoKm] = useState(false);
   const [erroKm, setErroKm] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [salvandoKm, setSalvandoKm] = useState(false);
-
-  /*
-  |--------------------------------------------------------------------------
-  | BUSCAR DADOS DO CLIENTE
-  |--------------------------------------------------------------------------
-  */
 
   useEffect(() => {
     carregarCliente();
@@ -44,27 +39,19 @@ export default function MeuFord() {
       setCarregando(true);
       setErroKm("");
 
-      const cliente = await buscarClientePorId(CLIENTE_ID);
-      const kmAtual = Number(cliente.km);
+      const dadosCliente = await buscarClientePorId(CLIENTE_ID);
+      const kmAtual = Number(dadosCliente.km);
 
+      setCliente(dadosCliente);
       setQuilometragem(kmAtual);
       setNovaQuilometragem(String(kmAtual));
     } catch (erro) {
       console.log("Erro ao carregar cliente:", erro);
-
-      setErroKm(
-        "Não foi possível carregar os dados do veículo."
-      );
+      setErroKm("Não foi possível carregar os dados do veículo.");
     } finally {
       setCarregando(false);
     }
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | SALVAR QUILOMETRAGEM
-  |--------------------------------------------------------------------------
-  */
 
   async function salvarQuilometragem() {
     const apenasNumeros = novaQuilometragem.replace(/\D/g, "");
@@ -93,10 +80,17 @@ export default function MeuFord() {
         valor
       );
 
+      const clienteAtualizado =
+        resposta.cliente || {
+          ...cliente,
+          km: valor,
+        };
+
       const kmAtualizado = Number(
-        resposta.cliente?.km ?? valor
+        clienteAtualizado?.km ?? valor
       );
 
+      setCliente(clienteAtualizado);
       setQuilometragem(kmAtualizado);
       setNovaQuilometragem(String(kmAtualizado));
       setEditandoKm(false);
@@ -115,29 +109,16 @@ export default function MeuFord() {
     }
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | CANCELAR EDIÇÃO
-  |--------------------------------------------------------------------------
-  */
-
   function cancelarEdicao() {
     setNovaQuilometragem(String(quilometragem));
     setErroKm("");
     setEditandoKm(false);
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | CARREGAMENTO
-  |--------------------------------------------------------------------------
-  */
-
   if (carregando) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
-
         <Text style={styles.loadingText}>
           Carregando seu veículo...
         </Text>
@@ -145,11 +126,23 @@ export default function MeuFord() {
     );
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | TELA
-  |--------------------------------------------------------------------------
-  */
+  const statusCliente = String(
+    cliente?.status || ""
+  ).toUpperCase();
+
+  const clienteRetido =
+    statusCliente === "CLIENTE RETIDO";
+
+  const nomeCliente =
+    cliente?.nome?.split(" ")[0] || "Cliente";
+
+  const modelo =
+    cliente?.modelo || "Ford Ranger Raptor";
+
+  const ano = cliente?.ano || "";
+
+  const ultimaRevisao =
+    cliente?.ultimaRevisao || "Não informada";
 
   return (
     <ScrollView
@@ -160,9 +153,12 @@ export default function MeuFord() {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* CABEÇALHO */}
-
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          isMobile && styles.headerMobile,
+        ]}
+      >
         <View style={styles.headerContent}>
           <Text style={styles.badge}>
             Área do cliente
@@ -174,7 +170,7 @@ export default function MeuFord() {
               isMobile && styles.titleMobile,
             ]}
           >
-            Olá, Marcos
+            Olá, {nomeCliente}
           </Text>
 
           <Text style={styles.subtitle}>
@@ -192,15 +188,18 @@ export default function MeuFord() {
         </TouchableOpacity>
       </View>
 
-      {/* VEÍCULO */}
-
       <View
         style={[
           styles.vehicleCard,
           isMobile && styles.vehicleCardMobile,
         ]}
       >
-        <View style={styles.vehicleTop}>
+        <View
+          style={[
+            styles.vehicleTop,
+            isMobile && styles.vehicleTopMobile,
+          ]}
+        >
           <View style={styles.vehicleContent}>
             <Text style={styles.label}>
               MEU VEÍCULO
@@ -212,11 +211,11 @@ export default function MeuFord() {
                 isMobile && styles.vehicleNameMobile,
               ]}
             >
-              Ford Ranger Raptor
+              {modelo}
             </Text>
 
             <Text style={styles.vehicleInfo}>
-              2022
+              {ano}
             </Text>
           </View>
 
@@ -227,11 +226,38 @@ export default function MeuFord() {
           </View>
         </View>
 
-        {/* QUILOMETRAGEM */}
+        <View style={styles.vehicleImageWrapper}>
+          <Image
+            source={buscarImagemVeiculo(modelo)}
+            style={[
+              styles.vehicleImage,
+              isMobile && styles.vehicleImageMobile,
+            ]}
+            resizeMode="cover"
+          />
+
+          <View style={styles.vehicleImageOverlay} />
+
+          <View style={styles.vehicleImageInfo}>
+            <Text style={styles.vehicleImageLabel}>
+              SEU FORD
+            </Text>
+
+            <Text
+              style={[
+                styles.vehicleImageName,
+                isMobile &&
+                  styles.vehicleImageNameMobile,
+              ]}
+            >
+              {modelo}
+            </Text>
+          </View>
+        </View>
 
         <View style={styles.mileageBox}>
           <View style={styles.mileageHeader}>
-            <View>
+            <View style={styles.mileageContent}>
               <Text style={styles.mileageLabel}>
                 QUILOMETRAGEM ATUAL
               </Text>
@@ -255,7 +281,6 @@ export default function MeuFord() {
                   setNovaQuilometragem(
                     String(quilometragem)
                   );
-
                   setErroKm("");
                   setEditandoKm(true);
                 }}
@@ -316,7 +341,9 @@ export default function MeuFord() {
                     <ActivityIndicator />
                   ) : (
                     <Text
-                      style={styles.saveButtonText}
+                      style={
+                        styles.saveButtonText
+                      }
                     >
                       Salvar quilometragem
                     </Text>
@@ -329,7 +356,9 @@ export default function MeuFord() {
                   disabled={salvandoKm}
                 >
                   <Text
-                    style={styles.cancelButtonText}
+                    style={
+                      styles.cancelButtonText
+                    }
                   >
                     Cancelar
                   </Text>
@@ -341,84 +370,187 @@ export default function MeuFord() {
 
         <View style={styles.divider} />
 
-        <Text style={styles.statusTitle}>
-          Revisão recomendada
-        </Text>
+        {clienteRetido ? (
+          <>
+            <Text
+              style={[
+                styles.statusTitle,
+                styles.statusTitleRetained,
+              ]}
+            >
+              Veículo em dia
+            </Text>
 
-        <Text style={styles.statusText}>
-          Seu veículo está próximo da quilometragem
-          indicada para a próxima manutenção
-          preventiva.
-        </Text>
+            <Text style={styles.statusText}>
+              Seu serviço foi concluído na rede
+              autorizada Ford. Continue acompanhando
+              seu veículo para manter a manutenção
+              sempre em dia.
+            </Text>
 
+            <View
+              style={[
+                styles.infoRow,
+                isMobile &&
+                  styles.infoRowMobile,
+              ]}
+            >
+              <View style={styles.infoBox}>
+                <Text style={styles.infoLabel}>
+                  Última revisão
+                </Text>
+
+                <Text style={styles.infoValue}>
+                  {ultimaRevisao}
+                </Text>
+              </View>
+
+              <View style={styles.infoBox}>
+                <Text style={styles.infoLabel}>
+                  Status pós-venda
+                </Text>
+
+                <Text
+                  style={[
+                    styles.infoValue,
+                    styles.retainedValue,
+                  ]}
+                >
+                  Cliente retido
+                </Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.statusTitle}>
+              Revisão recomendada
+            </Text>
+
+            <Text style={styles.statusText}>
+              Seu veículo está próximo da
+              quilometragem indicada para a próxima
+              manutenção preventiva.
+            </Text>
+
+            <View
+              style={[
+                styles.infoRow,
+                isMobile &&
+                  styles.infoRowMobile,
+              ]}
+            >
+              <View style={styles.infoBox}>
+                <Text style={styles.infoLabel}>
+                  Próxima revisão
+                </Text>
+
+                <Text style={styles.infoValue}>
+                  100.000 km
+                </Text>
+              </View>
+
+              <View style={styles.infoBox}>
+                <Text style={styles.infoLabel}>
+                  Última revisão
+                </Text>
+
+                <Text style={styles.infoValue}>
+                  {ultimaRevisao}
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
+      </View>
+
+      {clienteRetido ? (
         <View
           style={[
-            styles.infoRow,
-            isMobile && styles.infoRowMobile,
+            styles.benefitCard,
+            styles.retainedBenefitCard,
           ]}
         >
-          <View style={styles.infoBox}>
-            <Text style={styles.infoLabel}>
-              Próxima revisão
-            </Text>
-
-            <Text style={styles.infoValue}>
-              100.000 km
-            </Text>
-          </View>
-
-          <View style={styles.infoBox}>
-            <Text style={styles.infoLabel}>
-              Última revisão
-            </Text>
-
-            <Text style={styles.infoValue}>
-              15/08/2025
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* BENEFÍCIO */}
-
-      <View style={styles.benefitCard}>
-        <Text style={styles.benefitSmall}>
-          BENEFÍCIO EXCLUSIVO
-        </Text>
-
-        <Text
-          style={[
-            styles.benefitTitle,
-            isMobile && styles.benefitTitleMobile,
-          ]}
-        >
-          10% OFF na revisão preventiva
-        </Text>
-
-        <Text style={styles.benefitText}>
-          Benefício personalizado para manter seu
-          veículo em dia na rede autorizada Ford.
-        </Text>
-
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() =>
-            router.push({
-              pathname: "/agendamento",
-              params: {
-                id: CLIENTE_ID,
-                origem: "cliente",
-              },
-            })
-          }
-        >
-          <Text style={styles.primaryButtonText}>
-            Agendar revisão
+          <Text
+            style={[
+              styles.benefitSmall,
+              styles.retainedBenefitSmall,
+            ]}
+          >
+            PÓS-SERVIÇO
           </Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* SERVIÇOS */}
+          <Text
+            style={[
+              styles.benefitTitle,
+              isMobile &&
+                styles.benefitTitleMobile,
+            ]}
+          >
+            Obrigado por escolher a rede autorizada
+            Ford
+          </Text>
+
+          <Text style={styles.benefitText}>
+            Seu serviço foi registrado com sucesso.
+            Continue acompanhando seus agendamentos e
+            benefícios para manter seu Ford sempre em
+            dia.
+          </Text>
+
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              styles.retainedPrimaryButton,
+            ]}
+            onPress={() =>
+              router.push("/meus-agendamentos")
+            }
+          >
+            <Text style={styles.primaryButtonText}>
+              Ver meus agendamentos
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.benefitCard}>
+          <Text style={styles.benefitSmall}>
+            BENEFÍCIO EXCLUSIVO
+          </Text>
+
+          <Text
+            style={[
+              styles.benefitTitle,
+              isMobile &&
+                styles.benefitTitleMobile,
+            ]}
+          >
+            10% OFF na revisão preventiva
+          </Text>
+
+          <Text style={styles.benefitText}>
+            Benefício personalizado para manter seu
+            veículo em dia na rede autorizada Ford.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() =>
+              router.push({
+                pathname: "/agendamento",
+                params: {
+                  id: CLIENTE_ID,
+                  origem: "cliente",
+                },
+              })
+            }
+          >
+            <Text style={styles.primaryButtonText}>
+              Agendar revisão
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <Text style={styles.sectionTitle}>
         Meu relacionamento com a Ford
@@ -430,7 +562,12 @@ export default function MeuFord() {
           isMobile && styles.cardsGridMobile,
         ]}
       >
-        <TouchableOpacity style={styles.smallCard}>
+        <TouchableOpacity
+          style={styles.smallCard}
+          onPress={() =>
+            router.push("/historico-revisoes")
+          }
+        >
           <Text style={styles.cardLabel}>
             MANUTENÇÃO
           </Text>
@@ -449,9 +586,14 @@ export default function MeuFord() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.smallCard}>
+        <TouchableOpacity
+          style={styles.smallCard}
+          onPress={() =>
+            router.push("/meus-beneficios")
+          }
+        >
           <Text style={styles.cardLabel}>
-            VANTAGENS
+            BENEFÍCIOS
           </Text>
 
           <Text style={styles.smallCardTitle}>
@@ -493,8 +635,6 @@ export default function MeuFord() {
         </TouchableOpacity>
       </View>
 
-      {/* RODAPÉ */}
-
       <View style={styles.footerBox}>
         <Text style={styles.footerTitle}>
           Ford Retain
@@ -514,7 +654,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#020B18",
   },
-
   loadingContainer: {
     flex: 1,
     backgroundColor: "#020B18",
@@ -522,12 +661,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
   },
-
   loadingText: {
     color: "#9FB2CC",
     fontSize: 15,
   },
-
   content: {
     width: "100%",
     maxWidth: 1180,
@@ -536,12 +673,10 @@ const styles = StyleSheet.create({
     paddingTop: 34,
     paddingBottom: 50,
   },
-
   contentMobile: {
     paddingHorizontal: 18,
     paddingTop: 24,
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -549,34 +684,31 @@ const styles = StyleSheet.create({
     gap: 20,
     marginBottom: 30,
   },
-
+  headerMobile: {
+    flexWrap: "wrap",
+  },
   headerContent: {
     flex: 1,
   },
-
   badge: {
     color: "#4C8DFF",
     fontSize: 15,
     fontWeight: "800",
     marginBottom: 8,
   },
-
   title: {
     color: "#FFFFFF",
     fontSize: 42,
     fontWeight: "900",
   },
-
   titleMobile: {
     fontSize: 30,
   },
-
   subtitle: {
     color: "#9FB2CC",
     fontSize: 16,
     marginTop: 8,
   },
-
   exitButton: {
     backgroundColor: "#0A1E3B",
     paddingVertical: 11,
@@ -585,12 +717,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#173B70",
   },
-
   exitButtonText: {
     color: "#DCE9FF",
     fontWeight: "800",
   },
-
   vehicleCard: {
     backgroundColor: "#07162E",
     borderRadius: 28,
@@ -599,59 +729,91 @@ const styles = StyleSheet.create({
     borderColor: "#0D2A52",
     marginBottom: 22,
   },
-
   vehicleCardMobile: {
     padding: 20,
     borderRadius: 22,
   },
-
   vehicleTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: 16,
   },
-
+  vehicleTopMobile: {
+    alignItems: "flex-start",
+  },
   vehicleContent: {
     flex: 1,
   },
-
   label: {
     color: "#4C8DFF",
     fontSize: 13,
     fontWeight: "900",
     marginBottom: 8,
   },
-
   vehicleName: {
     color: "#FFFFFF",
     fontSize: 28,
     fontWeight: "900",
   },
-
   vehicleNameMobile: {
     fontSize: 22,
   },
-
   vehicleInfo: {
     color: "#9FB2CC",
     fontSize: 16,
     marginTop: 6,
   },
-
   vehicleBadge: {
     backgroundColor: "#0057FF",
     paddingVertical: 9,
     paddingHorizontal: 14,
     borderRadius: 999,
   },
-
   vehicleBadgeText: {
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "900",
   },
-
+  vehicleImageWrapper: {
+    position: "relative",
+    width: "100%",
+    marginTop: 22,
+    borderRadius: 20,
+    overflow: "hidden",
+    backgroundColor: "#020B18",
+  },
+  vehicleImage: {
+    width: "100%",
+    height: 320,
+  },
+  vehicleImageMobile: {
+    height: 210,
+  },
+  vehicleImageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(2, 11, 24, 0.18)",
+  },
+  vehicleImageInfo: {
+    position: "absolute",
+    left: 18,
+    bottom: 18,
+    right: 18,
+  },
+  vehicleImageLabel: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "900",
+    marginBottom: 5,
+  },
+  vehicleImageName: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  vehicleImageNameMobile: {
+    fontSize: 18,
+  },
   mileageBox: {
     backgroundColor: "#0A1E3B",
     borderRadius: 18,
@@ -660,7 +822,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#173B70",
   },
-
   mileageHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -668,26 +829,25 @@ const styles = StyleSheet.create({
     gap: 20,
     flexWrap: "wrap",
   },
-
+  mileageContent: {
+    flexShrink: 1,
+  },
   mileageLabel: {
     color: "#8FA4C0",
     fontSize: 12,
     fontWeight: "800",
     marginBottom: 6,
   },
-
   mileageValue: {
     color: "#FFFFFF",
     fontSize: 26,
     fontWeight: "900",
   },
-
   mileageUpdateText: {
     color: "#7187A5",
     fontSize: 12,
     marginTop: 5,
   },
-
   updateMileageButton: {
     borderWidth: 1,
     borderColor: "#4C8DFF",
@@ -695,27 +855,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
   },
-
   updateMileageButtonText: {
     color: "#4C8DFF",
     fontSize: 13,
     fontWeight: "800",
   },
-
   mileageEditor: {
     marginTop: 20,
     paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: "#17304F",
   },
-
   inputLabel: {
     color: "#C7D4E7",
     fontSize: 13,
     fontWeight: "700",
     marginBottom: 8,
   },
-
   mileageInput: {
     backgroundColor: "#07162E",
     borderWidth: 1,
@@ -727,23 +883,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     outlineStyle: "none",
   } as any,
-
   errorText: {
     color: "#FF7B7B",
     fontSize: 13,
     marginTop: 8,
   },
-
   editorButtons: {
     flexDirection: "row",
     gap: 12,
     marginTop: 14,
   },
-
   editorButtonsMobile: {
     flexDirection: "column",
   },
-
   saveButton: {
     backgroundColor: "#0057FF",
     paddingVertical: 12,
@@ -751,16 +903,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
   },
-
   disabledButton: {
     opacity: 0.6,
   },
-
   saveButtonText: {
     color: "#FFFFFF",
     fontWeight: "800",
   },
-
   cancelButton: {
     backgroundColor: "#07162E",
     borderWidth: 1,
@@ -770,85 +919,84 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
   },
-
   cancelButtonText: {
     color: "#B7C8DE",
     fontWeight: "800",
   },
-
   divider: {
     height: 1,
     backgroundColor: "#17304F",
     marginVertical: 22,
   },
-
   statusTitle: {
     color: "#FFCC4D",
     fontSize: 20,
     fontWeight: "900",
     marginBottom: 8,
   },
-
+  statusTitleRetained: {
+    color: "#1ED760",
+  },
   statusText: {
     color: "#C7D4E7",
     fontSize: 16,
     lineHeight: 24,
     maxWidth: 720,
   },
-
   infoRow: {
     flexDirection: "row",
     gap: 16,
     marginTop: 24,
   },
-
   infoRowMobile: {
     flexDirection: "column",
   },
-
   infoBox: {
     flex: 1,
     backgroundColor: "#0A1E3B",
     borderRadius: 16,
     padding: 18,
   },
-
   infoLabel: {
     color: "#8FA4C0",
     fontSize: 13,
     marginBottom: 6,
   },
-
   infoValue: {
     color: "#FFFFFF",
     fontSize: 21,
     fontWeight: "900",
   },
-
+  retainedValue: {
+    color: "#1ED760",
+  },
   benefitCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 26,
     padding: 28,
     marginBottom: 30,
   },
-
+  retainedBenefitCard: {
+    borderWidth: 1,
+    borderColor: "#BDEBCB",
+  },
   benefitSmall: {
     color: "#0057FF",
     fontSize: 13,
     fontWeight: "900",
     marginBottom: 8,
   },
-
+  retainedBenefitSmall: {
+    color: "#138C42",
+  },
   benefitTitle: {
     color: "#06182E",
     fontSize: 28,
     fontWeight: "900",
   },
-
   benefitTitleMobile: {
     fontSize: 23,
   },
-
   benefitText: {
     color: "#5F7086",
     fontSize: 16,
@@ -856,7 +1004,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     maxWidth: 720,
   },
-
   primaryButton: {
     backgroundColor: "#0057FF",
     paddingVertical: 16,
@@ -865,29 +1012,27 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginTop: 22,
   },
-
+  retainedPrimaryButton: {
+    backgroundColor: "#138C42",
+  },
   primaryButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "900",
   },
-
   sectionTitle: {
     color: "#FFFFFF",
     fontSize: 24,
     fontWeight: "900",
     marginBottom: 16,
   },
-
   cardsGrid: {
     flexDirection: "row",
     gap: 16,
   },
-
   cardsGridMobile: {
     flexDirection: "column",
   },
-
   smallCard: {
     flex: 1,
     backgroundColor: "#07162E",
@@ -896,35 +1041,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#0D2A52",
   },
-
   cardLabel: {
     color: "#4C8DFF",
     fontSize: 11,
     fontWeight: "900",
     marginBottom: 14,
   },
-
   smallCardTitle: {
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "900",
     marginBottom: 8,
   },
-
   smallCardText: {
     color: "#9FB2CC",
     fontSize: 14,
     lineHeight: 21,
     flex: 1,
   },
-
   cardLink: {
     color: "#4C8DFF",
     fontSize: 14,
     fontWeight: "800",
     marginTop: 20,
   },
-
   footerBox: {
     marginTop: 30,
     backgroundColor: "#051226",
@@ -932,14 +1072,12 @@ const styles = StyleSheet.create({
     padding: 22,
     alignItems: "center",
   },
-
   footerTitle: {
     color: "#4C8DFF",
     fontSize: 18,
     fontWeight: "900",
     marginBottom: 6,
   },
-
   footerText: {
     color: "#93A6C0",
     textAlign: "center",

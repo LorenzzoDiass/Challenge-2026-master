@@ -15,7 +15,6 @@ const db = new sqlite3.Database(
         "Erro ao conectar no banco:",
         erro.message
       );
-
       return;
     }
 
@@ -37,9 +36,62 @@ db.serialize(() => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nome TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
-      senha TEXT NOT NULL
+      senha TEXT NOT NULL,
+      perfil TEXT NOT NULL DEFAULT 'FUNCIONARIO'
     )
   `);
+
+  /*
+  |--------------------------------------------------------------------------
+  | MIGRAÇÃO DE PERFIL
+  |--------------------------------------------------------------------------
+  */
+
+  db.all(
+    `PRAGMA table_info(usuarios)`,
+    [],
+    (erro, colunas) => {
+      if (erro) {
+        console.log(
+          "Erro ao verificar estrutura de usuários:",
+          erro
+        );
+        return;
+      }
+
+      const possuiPerfil = colunas.some(
+        (coluna) => coluna.name === "perfil"
+      );
+
+      if (!possuiPerfil) {
+        db.run(
+          `
+          ALTER TABLE usuarios
+          ADD COLUMN perfil TEXT NOT NULL DEFAULT 'FUNCIONARIO'
+          `,
+          (erroAlteracao) => {
+            if (erroAlteracao) {
+              console.log(
+                "Erro ao adicionar perfil:",
+                erroAlteracao
+              );
+              return;
+            }
+
+            console.log(
+              "Coluna perfil adicionada com sucesso."
+            );
+
+            configurarUsuarioPadrao();
+          }
+        );
+
+        return;
+      }
+
+      configurarUsuarioPadrao();
+    }
+  );
 
   /*
   |--------------------------------------------------------------------------
@@ -90,60 +142,6 @@ db.serialize(() => {
 
   /*
   |--------------------------------------------------------------------------
-  | USUÁRIO PADRÃO DO SISTEMA
-  |--------------------------------------------------------------------------
-  */
-
-  const senhaPadrao = bcrypt.hashSync(
-    "ford123",
-    10
-  );
-
-  /*
-   * Se o banco já possuir o usuário antigo,
-   * atualizamos ele para a nova credencial.
-   */
-
-  db.run(
-    `
-    UPDATE usuarios
-    SET
-      nome = ?,
-      email = ?,
-      senha = ?
-    WHERE email = ?
-    `,
-    [
-      "Equipe Pós-venda Ford",
-      "funcionario@fordretain.com",
-      senhaPadrao,
-      "admin@ford.com",
-    ]
-  );
-
-  /*
-   * Caso seja um banco novo, criamos
-   * o usuário de demonstração.
-   */
-
-  db.run(
-    `
-    INSERT OR IGNORE INTO usuarios (
-      nome,
-      email,
-      senha
-    )
-    VALUES (?, ?, ?)
-    `,
-    [
-      "Equipe Pós-venda Ford",
-      "funcionario@fordretain.com",
-      senhaPadrao,
-    ]
-  );
-
-  /*
-  |--------------------------------------------------------------------------
   | CLIENTES INICIAIS
   |--------------------------------------------------------------------------
   */
@@ -165,7 +163,6 @@ db.serialize(() => {
       "Alta quilometragem e muito tempo desde a última revisão.",
       "Contato prioritário com oferta de desconto para revisão.",
     ],
-
     [
       2,
       "Fernanda Costa",
@@ -182,7 +179,6 @@ db.serialize(() => {
       "Revisão se aproximando e cliente com risco moderado de atraso.",
       "Enviar lembrete de manutenção preventiva.",
     ],
-
     [
       3,
       "Ricardo Almeida",
@@ -199,7 +195,6 @@ db.serialize(() => {
       "Cliente com manutenção recente e boa regularidade.",
       "Manter acompanhamento normal.",
     ],
-
     [
       4,
       "Juliana Martins",
@@ -216,7 +211,6 @@ db.serialize(() => {
       "Cliente não realiza revisão há mais de 10 meses.",
       "Contato urgente com benefício exclusivo.",
     ],
-
     [
       5,
       "Lucas Pereira",
@@ -233,7 +227,6 @@ db.serialize(() => {
       "Quilometragem próxima da revisão preventiva.",
       "Enviar oferta automática para agendamento.",
     ],
-
     [
       6,
       "Amanda Souza",
@@ -251,12 +244,6 @@ db.serialize(() => {
       "Manter relacionamento ativo.",
     ],
   ];
-
-  /*
-  |--------------------------------------------------------------------------
-  | INSERÇÃO DOS CLIENTES
-  |--------------------------------------------------------------------------
-  */
 
   const sqlCliente = `
     INSERT OR IGNORE INTO clientes (
@@ -285,5 +272,61 @@ db.serialize(() => {
     );
   });
 });
+
+function configurarUsuarioPadrao() {
+  const senhaPadrao = bcrypt.hashSync(
+    "ford123",
+    10
+  );
+
+  db.run(
+    `
+    UPDATE usuarios
+    SET
+      nome = ?,
+      email = ?,
+      senha = ?,
+      perfil = ?
+    WHERE email = ?
+    `,
+    [
+      "Equipe Pós-venda Ford",
+      "funcionario@fordretain.com",
+      senhaPadrao,
+      "FUNCIONARIO",
+      "admin@ford.com",
+    ]
+  );
+
+  db.run(
+    `
+    INSERT OR IGNORE INTO usuarios (
+      nome,
+      email,
+      senha,
+      perfil
+    )
+    VALUES (?, ?, ?, ?)
+    `,
+    [
+      "Equipe Pós-venda Ford",
+      "funcionario@fordretain.com",
+      senhaPadrao,
+      "FUNCIONARIO",
+    ]
+  );
+
+  db.run(
+    `
+    UPDATE usuarios
+    SET perfil = ?
+    WHERE email = ?
+    `,
+    [
+      "FUNCIONARIO",
+      "funcionario@fordretain.com",
+    ]
+  );
+}
 
 module.exports = db;
