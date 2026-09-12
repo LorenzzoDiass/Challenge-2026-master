@@ -1,6 +1,6 @@
 import { buscarToken } from "./sessionService";
 
-const API_URL = "http://10.0.0.131:3001";
+const API_URL = "https://challenge-2026-master.onrender.com";
 
 async function criarHeadersAutenticados() {
   const token = await buscarToken();
