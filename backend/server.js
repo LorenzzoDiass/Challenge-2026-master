@@ -3,49 +3,63 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
+
 const db = require("./database");
 
 const app = express();
+
 const PORT = 3001;
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const HORA_ABERTURA = 8;
+const HORA_FECHAMENTO = 18;
+
 if (!JWT_SECRET) {
-  console.error("ERRO: JWT_SECRET não foi definida no arquivo .env");
+  console.error(
+    "ERRO: JWT_SECRET não foi definida no arquivo .env"
+  );
+
   process.exit(1);
 }
 
 app.use(cors());
 app.use(express.json());
 
+/*
+|--------------------------------------------------------------------------
+| AUTENTICAÇÃO
+|--------------------------------------------------------------------------
+*/
+
 function autenticarToken(req, res, next) {
-  const authorization = req.headers.authorization;
+  const authorization =
+    req.headers.authorization;
 
   if (!authorization) {
     return res.status(401).json({
-      mensagem: "Token de acesso não informado",
+      mensagem:
+        "Token de acesso não informado",
     });
   }
 
-  const partes = authorization.split(" ");
+  const partes =
+    authorization.split(" ");
 
   if (
     partes.length !== 2 ||
     partes[0] !== "Bearer"
   ) {
     return res.status(401).json({
-      mensagem: "Token de acesso inválido",
+      mensagem:
+        "Token de acesso inválido",
     });
   }
 
-  const token = partes[1];
-
   try {
-    const usuario = jwt.verify(
-      token,
+    req.usuario = jwt.verify(
+      partes[1],
       JWT_SECRET
     );
-
-    req.usuario = usuario;
 
     next();
   } catch (erro) {
@@ -56,13 +70,89 @@ function autenticarToken(req, res, next) {
   }
 }
 
+function autorizarFuncionario(
+  req,
+  res,
+  next
+) {
+  if (
+    req.usuario?.perfil !==
+    "FUNCIONARIO"
+  ) {
+    return res.status(403).json({
+      mensagem:
+        "Acesso permitido apenas para funcionários Ford",
+    });
+  }
+
+  next();
+}
+
+function autorizarAcessoAoCliente(
+  req,
+  res,
+  next
+) {
+  if (
+    req.usuario?.perfil ===
+    "FUNCIONARIO"
+  ) {
+    return next();
+  }
+
+  if (
+    req.usuario?.perfil ===
+      "CLIENTE" &&
+    Number(
+      req.usuario.clienteId
+    ) === Number(req.params.id)
+  ) {
+    return next();
+  }
+
+  return res.status(403).json({
+    mensagem:
+      "Você não possui permissão para acessar este cliente",
+  });
+}
+
+function validarClienteDoAgendamento(
+  req,
+  res,
+  next
+) {
+  if (
+    req.usuario?.perfil ===
+    "FUNCIONARIO"
+  ) {
+    return next();
+  }
+
+  if (
+    req.usuario?.perfil ===
+      "CLIENTE" &&
+    Number(
+      req.usuario.clienteId
+    ) === Number(req.body.clienteId)
+  ) {
+    return next();
+  }
+
+  return res.status(403).json({
+    mensagem:
+      "Você não possui permissão para criar este agendamento",
+  });
+}
+
 /*
 |--------------------------------------------------------------------------
-| RETAIN SCORE
+| DATAS E HORÁRIOS
 |--------------------------------------------------------------------------
 */
 
-function converterDataBrasileira(data) {
+function converterDataBrasileira(
+  data
+) {
   if (
     !data ||
     typeof data !== "string"
@@ -70,26 +160,39 @@ function converterDataBrasileira(data) {
     return null;
   }
 
-  const partes = data.split("/");
+  const partes =
+    data.split("/");
 
   if (partes.length !== 3) {
     return null;
   }
 
-  const dia = Number(partes[0]);
-  const mes = Number(partes[1]) - 1;
-  const ano = Number(partes[2]);
+  const dia =
+    Number(partes[0]);
 
-  const dataConvertida = new Date(
-    ano,
-    mes,
-    dia
-  );
+  const mes =
+    Number(partes[1]) - 1;
+
+  const ano =
+    Number(partes[2]);
+
+  const dataConvertida =
+    new Date(
+      ano,
+      mes,
+      dia
+    );
 
   if (
     Number.isNaN(
       dataConvertida.getTime()
-    )
+    ) ||
+    dataConvertida.getFullYear() !==
+      ano ||
+    dataConvertida.getMonth() !==
+      mes ||
+    dataConvertida.getDate() !==
+      dia
   ) {
     return null;
   }
@@ -97,15 +200,182 @@ function converterDataBrasileira(data) {
   return dataConvertida;
 }
 
-function calcularMesesDesdeData(data) {
+function obterInicioDoDia(
+  data = new Date()
+) {
+  return new Date(
+    data.getFullYear(),
+    data.getMonth(),
+    data.getDate()
+  );
+}
+
+function converterHorarioParaMinutos(
+  horario
+) {
+  if (
+    !horario ||
+    typeof horario !== "string"
+  ) {
+    return null;
+  }
+
+  const formatoValido =
+    /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+  if (
+    !formatoValido.test(
+      horario
+    )
+  ) {
+    return null;
+  }
+
+  const [
+    hora,
+    minuto,
+  ] = horario
+    .split(":")
+    .map(Number);
+
+  return hora * 60 + minuto;
+}
+
+function validarDataHorarioAgendamento(
+  data,
+  horario
+) {
+  const dataAgendamento =
+    converterDataBrasileira(
+      data
+    );
+
+  if (!dataAgendamento) {
+    return "Informe uma data válida no formato DD/MM/AAAA";
+  }
+
+  const hoje =
+    obterInicioDoDia();
+
+  const diaAgendamento =
+    obterInicioDoDia(
+      dataAgendamento
+    );
+
+  if (
+    diaAgendamento.getTime() <
+    hoje.getTime()
+  ) {
+    return "Não é possível agendar para uma data anterior a hoje";
+  }
+
+  const minutos =
+    converterHorarioParaMinutos(
+      horario
+    );
+
+  if (minutos === null) {
+    return "Informe um horário válido no formato HH:MM";
+  }
+
+  const abertura =
+    HORA_ABERTURA * 60;
+
+  const fechamento =
+    HORA_FECHAMENTO * 60;
+
+  if (
+    minutos < abertura ||
+    minutos > fechamento
+  ) {
+    return "Os agendamentos estão disponíveis das 08:00 às 18:00";
+  }
+
+  const ehHoje =
+    diaAgendamento.getTime() ===
+    hoje.getTime();
+
+  if (ehHoje) {
+    const agora =
+      new Date();
+
+    const minutosAgora =
+      agora.getHours() * 60 +
+      agora.getMinutes();
+
+    if (
+      minutos <=
+      minutosAgora
+    ) {
+      return "Para hoje, escolha um horário que ainda não tenha passado";
+    }
+  }
+
+  return null;
+}
+
+function agendamentoJaPodeSerConcluido(
+  data,
+  horario
+) {
+  const dataAgendamento =
+    converterDataBrasileira(
+      data
+    );
+
+  const minutos =
+    converterHorarioParaMinutos(
+      horario
+    );
+
+  if (
+    !dataAgendamento ||
+    minutos === null
+  ) {
+    return false;
+  }
+
+  const hora =
+    Math.floor(
+      minutos / 60
+    );
+
+  const minuto =
+    minutos % 60;
+
+  dataAgendamento.setHours(
+    hora,
+    minuto,
+    0,
+    0
+  );
+
+  return (
+    new Date().getTime() >=
+    dataAgendamento.getTime()
+  );
+}
+
+/*
+|--------------------------------------------------------------------------
+| RETAIN SCORE
+|--------------------------------------------------------------------------
+*/
+
+function calcularMesesDesdeData(
+  data
+) {
   const dataConvertida =
-    converterDataBrasileira(data);
+    converterDataBrasileira(
+      data
+    );
 
   if (!dataConvertida) {
     return 0;
   }
 
-  const hoje = new Date();
+  const hoje =
+    new Date();
 
   let meses =
     (hoje.getFullYear() -
@@ -121,10 +391,15 @@ function calcularMesesDesdeData(data) {
     meses--;
   }
 
-  return Math.max(0, meses);
+  return Math.max(
+    0,
+    meses
+  );
 }
 
-function calcularRetainScore(cliente) {
+function calcularRetainScore(
+  cliente
+) {
   let score = 10;
 
   const fatoresRisco = [];
@@ -137,19 +412,29 @@ function calcularRetainScore(cliente) {
       cliente.ultimaRevisao
     );
 
+  /*
+  |--------------------------------------------------------------------------
+  | QUILOMETRAGEM
+  |--------------------------------------------------------------------------
+  */
+
   if (km >= 90000) {
     score += 25;
 
     fatoresRisco.push(
       "Alta quilometragem"
     );
-  } else if (km >= 60000) {
+  } else if (
+    km >= 60000
+  ) {
     score += 18;
 
     fatoresRisco.push(
       "Quilometragem elevada"
     );
-  } else if (km >= 40000) {
+  } else if (
+    km >= 40000
+  ) {
     score += 10;
 
     fatoresRisco.push(
@@ -157,7 +442,15 @@ function calcularRetainScore(cliente) {
     );
   }
 
-  if (mesesSemRevisao >= 12) {
+  /*
+  |--------------------------------------------------------------------------
+  | TEMPO DESDE A ÚLTIMA REVISÃO
+  |--------------------------------------------------------------------------
+  */
+
+  if (
+    mesesSemRevisao >= 12
+  ) {
     score += 30;
 
     fatoresRisco.push(
@@ -181,14 +474,25 @@ function calcularRetainScore(cliente) {
     );
   }
 
-  const garantia = String(
-    cliente.garantia || ""
-  ).toLowerCase();
+  /*
+  |--------------------------------------------------------------------------
+  | GARANTIA
+  |--------------------------------------------------------------------------
+  */
+
+  const garantia =
+    String(
+      cliente.garantia || ""
+    ).toLowerCase();
 
   if (
     garantia.includes("fora") ||
-    garantia.includes("encerrada") ||
-    garantia.includes("expirada")
+    garantia.includes(
+      "encerrada"
+    ) ||
+    garantia.includes(
+      "expirada"
+    )
   ) {
     score += 20;
 
@@ -197,12 +501,20 @@ function calcularRetainScore(cliente) {
     );
   }
 
-  const status = String(
-    cliente.status || ""
-  ).toUpperCase();
+  /*
+  |--------------------------------------------------------------------------
+  | STATUS
+  |--------------------------------------------------------------------------
+  */
+
+  const status =
+    String(
+      cliente.status || ""
+    ).toUpperCase();
 
   if (
-    status === "SEM CONTATO"
+    status ===
+    "SEM CONTATO"
   ) {
     score += 12;
 
@@ -212,65 +524,99 @@ function calcularRetainScore(cliente) {
   }
 
   if (
-    status === "REVISÃO AGENDADA"
+    status ===
+    "REVISÃO AGENDADA"
   ) {
     score -= 20;
   }
 
   if (
-    status === "CLIENTE RETIDO"
+    status ===
+    "CLIENTE RETIDO"
   ) {
     score -= 35;
   }
 
-  score = Math.max(
-    0,
-    Math.min(100, score)
-  );
+  score =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        score
+      )
+    );
 
-  let classificacao = "BAIXO";
+  /*
+  |--------------------------------------------------------------------------
+  | CLASSIFICAÇÃO
+  |--------------------------------------------------------------------------
+  */
 
-  if (score >= 70) {
-    classificacao = "ALTO";
-  } else if (score >= 40) {
-    classificacao = "MÉDIO";
+  let classificacao =
+    "BAIXO";
+
+  if (
+    score >= 70
+  ) {
+    classificacao =
+      "ALTO";
+  } else if (
+    score >= 40
+  ) {
+    classificacao =
+      "MÉDIO";
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | AÇÃO RECOMENDADA
+  |--------------------------------------------------------------------------
+  */
 
   let acaoRecomendada =
     "Manter acompanhamento regular do cliente.";
 
   if (
-    classificacao === "ALTO"
+    classificacao ===
+    "ALTO"
   ) {
     acaoRecomendada =
       "Realizar contato prioritário e oferecer benefício para retorno à rede autorizada.";
   } else if (
-    classificacao === "MÉDIO"
+    classificacao ===
+    "MÉDIO"
   ) {
     acaoRecomendada =
       "Enviar lembrete de manutenção e oferta personalizada.";
   }
 
   if (
-    status === "REVISÃO AGENDADA"
+    status ===
+    "REVISÃO AGENDADA"
   ) {
     acaoRecomendada =
       "Acompanhar o agendamento e manter o relacionamento pós-serviço.";
   }
 
   if (
-    status === "CLIENTE RETIDO"
+    status ===
+    "CLIENTE RETIDO"
   ) {
     acaoRecomendada =
       "Cliente retornou à rede autorizada. Manter relacionamento e acompanhamento pós-serviço.";
   }
 
   return {
-    retainScore: score,
+    retainScore:
+      score,
+
     classificacaoRetain:
       classificacao,
+
     fatoresRisco,
+
     mesesSemRevisao,
+
     acaoRecomendada,
   };
 }
@@ -292,11 +638,14 @@ function adicionarRetainScore(
 |--------------------------------------------------------------------------
 */
 
-app.get("/", (req, res) => {
-  res.send(
-    "API Ford Retain rodando!"
-  );
-});
+app.get(
+  "/",
+  (req, res) => {
+    res.send(
+      "API Ford Retain rodando!"
+    );
+  }
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -307,29 +656,28 @@ app.get("/", (req, res) => {
 app.get(
   "/concessionarias",
   (req, res) => {
-    const concessionarias = [
+    res.json([
       "Ford Center Morumbi",
       "Ford Center Norte",
       "Ford Center Tatuapé",
       "Ford Center Santo Amaro",
       "Ford Center Alphaville",
-    ];
-
-    res.json(
-      concessionarias
-    );
+    ]);
   }
 );
 
 /*
 |--------------------------------------------------------------------------
-| USUÁRIOS
+| CADASTRO DE USUÁRIO
 |--------------------------------------------------------------------------
 */
 
 app.post(
   "/usuarios",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     const {
       nome,
       email,
@@ -401,7 +749,9 @@ app.post(
       FROM usuarios
       WHERE email = ?
       `,
-      [emailLimpo],
+      [
+        emailLimpo,
+      ],
       async (
         erro,
         usuarioExistente
@@ -478,12 +828,17 @@ app.post(
                 .json({
                   mensagem:
                     "Usuário cadastrado com sucesso",
+
                   usuario: {
-                    id: this.lastID,
+                    id:
+                      this.lastID,
+
                     nome:
                       nomeLimpo,
+
                     email:
                       emailLimpo,
+
                     perfil:
                       "FUNCIONARIO",
                   },
@@ -512,13 +867,16 @@ app.post(
 
 /*
 |--------------------------------------------------------------------------
-| LOGIN
+| LOGIN FUNCIONÁRIO
 |--------------------------------------------------------------------------
 */
 
 app.post(
   "/login",
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
     const {
       email,
       senha,
@@ -552,7 +910,9 @@ app.post(
       FROM usuarios
       WHERE email = ?
       `,
-      [emailLimpo],
+      [
+        emailLimpo,
+      ],
       async (
         erro,
         usuario
@@ -571,7 +931,9 @@ app.post(
             });
         }
 
-        if (!usuario) {
+        if (
+          !usuario
+        ) {
           return res
             .status(401)
             .json({
@@ -614,11 +976,15 @@ app.post(
           const token =
             jwt.sign(
               {
-                id: usuario.id,
+                id:
+                  usuario.id,
+
                 nome:
                   usuario.nome,
+
                 email:
                   usuario.email,
+
                 perfil:
                   usuario.perfil,
               },
@@ -632,13 +998,19 @@ app.post(
           return res.json({
             mensagem:
               "Login realizado com sucesso",
+
             token,
+
             usuario: {
-              id: usuario.id,
+              id:
+                usuario.id,
+
               nome:
                 usuario.nome,
+
               email:
                 usuario.email,
+
               perfil:
                 usuario.perfil,
             },
@@ -665,14 +1037,132 @@ app.post(
 
 /*
 |--------------------------------------------------------------------------
-| CLIENTES
+| LOGIN DEMONSTRATIVO CLIENTE
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  "/login-cliente-demo",
+  (
+    req,
+    res
+  ) => {
+    const clienteId = 1;
+
+    db.get(
+      `
+      SELECT
+        id,
+        nome,
+        email
+      FROM clientes
+      WHERE id = ?
+      `,
+      [
+        clienteId,
+      ],
+      (
+        erro,
+        cliente
+      ) => {
+        if (erro) {
+          console.log(
+            "Erro ao iniciar sessão demonstrativa do cliente:",
+            erro
+          );
+
+          return res
+            .status(500)
+            .json({
+              mensagem:
+                "Erro interno do servidor",
+            });
+        }
+
+        if (
+          !cliente
+        ) {
+          return res
+            .status(404)
+            .json({
+              mensagem:
+                "Cliente de demonstração não encontrado",
+            });
+        }
+
+        const token =
+          jwt.sign(
+            {
+              id:
+                `cliente-${cliente.id}`,
+
+              nome:
+                cliente.nome,
+
+              email:
+                cliente.email,
+
+              perfil:
+                "CLIENTE",
+
+              clienteId:
+                cliente.id,
+
+              demo:
+                true,
+            },
+            JWT_SECRET,
+            {
+              expiresIn:
+                "8h",
+            }
+          );
+
+        return res.json({
+          mensagem:
+            "Acesso demonstrativo do cliente iniciado",
+
+          token,
+
+          usuario: {
+            id:
+              `cliente-${cliente.id}`,
+
+            nome:
+              cliente.nome,
+
+            email:
+              cliente.email,
+
+            perfil:
+              "CLIENTE",
+
+            clienteId:
+              cliente.id,
+
+            demo:
+              true,
+          },
+        });
+      }
+    );
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| LISTAR CLIENTES
 |--------------------------------------------------------------------------
 */
 
 app.get(
   "/clientes",
   autenticarToken,
-  (req, res) => {
+  autorizarFuncionario,
+  (
+    req,
+    res
+  ) => {
     db.all(
       `
       SELECT *
@@ -698,13 +1188,10 @@ app.get(
             });
         }
 
-        const clientesComScore =
+        return res.json(
           clientes.map(
             adicionarRetainScore
-          );
-
-        res.json(
-          clientesComScore
+          )
         );
       }
     );
@@ -720,14 +1207,20 @@ app.get(
 app.get(
   "/clientes/:id",
   autenticarToken,
-  (req, res) => {
+  autorizarAcessoAoCliente,
+  (
+    req,
+    res
+  ) => {
     db.get(
       `
       SELECT *
       FROM clientes
       WHERE id = ?
       `,
-      [req.params.id],
+      [
+        req.params.id,
+      ],
       (
         erro,
         cliente
@@ -746,7 +1239,9 @@ app.get(
             });
         }
 
-        if (!cliente) {
+        if (
+          !cliente
+        ) {
           return res
             .status(404)
             .json({
@@ -755,7 +1250,7 @@ app.get(
             });
         }
 
-        res.json(
+        return res.json(
           adicionarRetainScore(
             cliente
           )
@@ -767,18 +1262,25 @@ app.get(
 
 /*
 |--------------------------------------------------------------------------
-| ATUALIZAR STATUS DO CLIENTE
+| ATUALIZAR STATUS
 |--------------------------------------------------------------------------
 */
 
 app.put(
   "/clientes/:id/status",
   autenticarToken,
-  (req, res) => {
-    const { status } =
-      req.body;
+  autorizarFuncionario,
+  (
+    req,
+    res
+  ) => {
+    const {
+      status,
+    } = req.body;
 
-    if (!status) {
+    if (
+      !status
+    ) {
       return res
         .status(400)
         .json({
@@ -797,7 +1299,9 @@ app.put(
         status,
         req.params.id,
       ],
-      function (erro) {
+      function (
+        erro
+      ) {
         if (erro) {
           console.log(
             "Erro ao atualizar status:",
@@ -813,7 +1317,8 @@ app.put(
         }
 
         if (
-          this.changes === 0
+          this.changes ===
+          0
         ) {
           return res
             .status(404)
@@ -847,7 +1352,7 @@ app.put(
                 });
             }
 
-            res.json(
+            return res.json(
               adicionarRetainScore(
                 clienteAtualizado
               )
@@ -868,7 +1373,11 @@ app.put(
 app.put(
   "/clientes/:id/quilometragem",
   autenticarToken,
-  (req, res) => {
+  autorizarAcessoAoCliente,
+  (
+    req,
+    res
+  ) => {
     const {
       quilometragem,
     } = req.body;
@@ -876,7 +1385,8 @@ app.put(
     if (
       quilometragem ===
         undefined ||
-      quilometragem === null
+      quilometragem ===
+        null
     ) {
       return res
         .status(400)
@@ -886,12 +1396,15 @@ app.put(
         });
     }
 
-    const km = Number(
-      quilometragem
-    );
+    const km =
+      Number(
+        quilometragem
+      );
 
     if (
-      !Number.isFinite(km) ||
+      !Number.isFinite(
+        km
+      ) ||
       km <= 0
     ) {
       return res
@@ -908,12 +1421,16 @@ app.put(
       FROM clientes
       WHERE id = ?
       `,
-      [req.params.id],
+      [
+        req.params.id,
+      ],
       (
         erroBusca,
         cliente
       ) => {
-        if (erroBusca) {
+        if (
+          erroBusca
+        ) {
           console.log(
             "Erro ao buscar cliente:",
             erroBusca
@@ -927,7 +1444,9 @@ app.put(
             });
         }
 
-        if (!cliente) {
+        if (
+          !cliente
+        ) {
           return res
             .status(404)
             .json({
@@ -998,8 +1517,7 @@ app.put(
               WHERE id = ?
               `,
               [
-                req.params
-                  .id,
+                req.params.id,
               ],
               (
                 erroRetorno,
@@ -1024,6 +1542,7 @@ app.put(
                 return res.json({
                   mensagem:
                     "Quilometragem atualizada com sucesso",
+
                   cliente:
                     adicionarRetainScore(
                       clienteAtualizado
@@ -1040,14 +1559,18 @@ app.put(
 
 /*
 |--------------------------------------------------------------------------
-| AGENDAMENTOS
+| LISTAR TODOS OS AGENDAMENTOS
 |--------------------------------------------------------------------------
 */
 
 app.get(
   "/agendamentos",
   autenticarToken,
-  (req, res) => {
+  autorizarFuncionario,
+  (
+    req,
+    res
+  ) => {
     db.all(
       `
       SELECT *
@@ -1073,7 +1596,7 @@ app.get(
             });
         }
 
-        res.json(
+        return res.json(
           agendamentos
         );
       }
@@ -1090,7 +1613,11 @@ app.get(
 app.get(
   "/clientes/:id/agendamentos",
   autenticarToken,
-  (req, res) => {
+  autorizarAcessoAoCliente,
+  (
+    req,
+    res
+  ) => {
     db.all(
       `
       SELECT *
@@ -1098,7 +1625,9 @@ app.get(
       WHERE clienteId = ?
       ORDER BY id DESC
       `,
-      [req.params.id],
+      [
+        req.params.id,
+      ],
       (
         erro,
         agendamentos
@@ -1117,7 +1646,7 @@ app.get(
             });
         }
 
-        res.json(
+        return res.json(
           agendamentos
         );
       }
@@ -1134,7 +1663,11 @@ app.get(
 app.post(
   "/agendamentos",
   autenticarToken,
-  (req, res) => {
+  validarClienteDoAgendamento,
+  (
+    req,
+    res
+  ) => {
     const {
       clienteId,
       unidade,
@@ -1143,6 +1676,12 @@ app.post(
       servico,
       observacao,
     } = req.body;
+
+    /*
+    |--------------------------------------------------------------------------
+    | CAMPOS OBRIGATÓRIOS
+    |--------------------------------------------------------------------------
+    */
 
     if (
       !clienteId ||
@@ -1159,13 +1698,44 @@ app.post(
         });
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | DATA E HORÁRIO
+    |--------------------------------------------------------------------------
+    */
+
+    const erroDataHorario =
+      validarDataHorarioAgendamento(
+        data,
+        horario
+      );
+
+    if (
+      erroDataHorario
+    ) {
+      return res
+        .status(400)
+        .json({
+          mensagem:
+            erroDataHorario,
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BUSCAR CLIENTE
+    |--------------------------------------------------------------------------
+    */
+
     db.get(
       `
       SELECT *
       FROM clientes
       WHERE id = ?
       `,
-      [clienteId],
+      [
+        clienteId,
+      ],
       (
         erro,
         cliente
@@ -1184,7 +1754,9 @@ app.post(
             });
         }
 
-        if (!cliente) {
+        if (
+          !cliente
+        ) {
           return res
             .status(404)
             .json({
@@ -1192,6 +1764,12 @@ app.post(
                 "Cliente não encontrado",
             });
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | CRIAR AGENDAMENTO
+        |--------------------------------------------------------------------------
+        */
 
         db.run(
           `
@@ -1241,6 +1819,12 @@ app.post(
             const agendamentoId =
               this.lastID;
 
+            /*
+            |--------------------------------------------------------------------------
+            | ATUALIZAR STATUS DO CLIENTE
+            |--------------------------------------------------------------------------
+            */
+
             db.run(
               `
               UPDATE clientes
@@ -1263,6 +1847,12 @@ app.post(
                   );
                 }
 
+                /*
+                |--------------------------------------------------------------------------
+                | RETORNAR AGENDAMENTO
+                |--------------------------------------------------------------------------
+                */
+
                 db.get(
                   `
                   SELECT *
@@ -1280,9 +1870,7 @@ app.post(
                       erroBusca
                     ) {
                       return res
-                        .status(
-                          500
-                        )
+                        .status(500)
                         .json({
                           mensagem:
                             "Agendamento criado, mas houve erro ao retornar os dados",
@@ -1290,9 +1878,7 @@ app.post(
                     }
 
                     return res
-                      .status(
-                        201
-                      )
+                      .status(201)
                       .json(
                         novoAgendamento
                       );
@@ -1316,14 +1902,26 @@ app.post(
 app.put(
   "/agendamentos/:id/concluir",
   autenticarToken,
-  (req, res) => {
+  autorizarFuncionario,
+  (
+    req,
+    res
+  ) => {
+    /*
+    |--------------------------------------------------------------------------
+    | BUSCAR AGENDAMENTO
+    |--------------------------------------------------------------------------
+    */
+
     db.get(
       `
       SELECT *
       FROM agendamentos
       WHERE id = ?
       `,
-      [req.params.id],
+      [
+        req.params.id,
+      ],
       (
         erroBusca,
         agendamento
@@ -1355,12 +1953,25 @@ app.put(
             });
         }
 
-        if (
+        /*
+        |--------------------------------------------------------------------------
+        | JÁ CONCLUÍDO
+        |--------------------------------------------------------------------------
+        */
+
+        const statusAtual =
           String(
             agendamento.status ||
               ""
-          ).toUpperCase() ===
-          "CONCLUÍDO"
+          )
+            .trim()
+            .toUpperCase();
+
+        if (
+          statusAtual ===
+            "CONCLUÍDO" ||
+          statusAtual ===
+            "CONCLUIDO"
         ) {
           return res
             .status(400)
@@ -1369,6 +1980,32 @@ app.put(
                 "Este agendamento já foi concluído",
             });
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | IMPEDIR CONCLUSÃO ANTECIPADA
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+          !agendamentoJaPodeSerConcluido(
+            agendamento.data,
+            agendamento.horario
+          )
+        ) {
+          return res
+            .status(400)
+            .json({
+              mensagem:
+                "Este serviço só pode ser concluído após a data e o horário agendados",
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | CONCLUIR AGENDAMENTO
+        |--------------------------------------------------------------------------
+        */
 
         db.run(
           `
@@ -1398,6 +2035,12 @@ app.put(
                     "Erro ao concluir agendamento",
                 });
             }
+
+            /*
+            |--------------------------------------------------------------------------
+            | ATUALIZAR CLIENTE
+            |--------------------------------------------------------------------------
+            */
 
             db.run(
               `
@@ -1431,6 +2074,12 @@ app.put(
                     });
                 }
 
+                /*
+                |--------------------------------------------------------------------------
+                | BUSCAR CLIENTE ATUALIZADO
+                |--------------------------------------------------------------------------
+                */
+
                 db.get(
                   `
                   SELECT *
@@ -1453,14 +2102,18 @@ app.put(
                       );
 
                       return res
-                        .status(
-                          500
-                        )
+                        .status(500)
                         .json({
                           mensagem:
                             "Serviço concluído, mas houve erro ao retornar o cliente",
                         });
                     }
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | BUSCAR AGENDAMENTO ATUALIZADO
+                    |--------------------------------------------------------------------------
+                    */
 
                     db.get(
                       `
@@ -1469,8 +2122,7 @@ app.put(
                       WHERE id = ?
                       `,
                       [
-                        req.params
-                          .id,
+                        req.params.id,
                       ],
                       (
                         erroAgendamento,
@@ -1485,27 +2137,25 @@ app.put(
                           );
 
                           return res
-                            .status(
-                              500
-                            )
+                            .status(500)
                             .json({
                               mensagem:
                                 "Serviço concluído, mas houve erro ao retornar o agendamento",
                             });
                         }
 
-                        return res.json(
-                          {
-                            mensagem:
-                              "Serviço concluído e cliente retido com sucesso",
-                            agendamento:
-                              agendamentoAtualizado,
-                            cliente:
-                              adicionarRetainScore(
-                                clienteAtualizado
-                              ),
-                          }
-                        );
+                        return res.json({
+                          mensagem:
+                            "Serviço concluído e cliente retido com sucesso",
+
+                          agendamento:
+                            agendamentoAtualizado,
+
+                          cliente:
+                            adicionarRetainScore(
+                              clienteAtualizado
+                            ),
+                        });
                       }
                     );
                   }

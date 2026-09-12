@@ -14,11 +14,13 @@ import { router } from "expo-router";
 
 import {
   fazerLogin as fazerLoginApi,
+  fazerLoginClienteDemo,
 } from "../services/api";
 
 import {
   salvarUsuarioLogado,
   salvarToken,
+  removerUsuarioLogado,
 } from "../services/sessionService";
 
 export default function HomeScreen() {
@@ -33,7 +35,6 @@ export default function HomeScreen() {
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-
   const [erro, setErro] = useState("");
 
   const [
@@ -43,6 +44,11 @@ export default function HomeScreen() {
 
   const [entrando, setEntrando] =
     useState(false);
+
+  const [
+    entrandoCliente,
+    setEntrandoCliente,
+  ] = useState(false);
 
   const emailDemo =
     "funcionario@fordretain.com";
@@ -85,29 +91,11 @@ export default function HomeScreen() {
     try {
       setEntrando(true);
 
-      /*
-       * Envia o e-mail e a senha
-       * para o backend.
-       */
-
       const dados =
         await fazerLoginApi(
           email.trim(),
           senha
         );
-
-      /*
-       * O backend pode retornar:
-       *
-       * {
-       *   mensagem: "...",
-       *   usuario: {...}
-       * }
-       *
-       * Por segurança também aceitamos
-       * caso o próprio objeto retornado
-       * já seja o usuário.
-       */
 
       const usuario =
         dados.usuario || dados;
@@ -123,27 +111,30 @@ export default function HomeScreen() {
         );
       }
 
-      /*
-       * Salva quem entrou.
-       */
+      if (!dados.token) {
+        throw new Error(
+          "Token de acesso não recebido."
+        );
+      }
+
+      await removerUsuarioLogado();
+
+      await salvarToken(
+        dados.token
+      );
 
       await salvarUsuarioLogado({
         id: usuario.id,
         nome: usuario.nome,
         email: usuario.email,
+        perfil:
+          usuario.perfil ||
+          "FUNCIONARIO",
       });
 
-      if (!dados.token) {
-        throw new Error("Token de acesso não recebido.");
-      }
-
-      await salvarToken(dados.token);
-
-      /*
-       * Vai para o painel.
-       */
-
-      router.replace("/dashboard");
+      router.replace(
+        "/dashboard"
+      );
     } catch (erro: any) {
       console.log(
         "Erro ao fazer login:",
@@ -152,10 +143,104 @@ export default function HomeScreen() {
 
       setErro(
         erro?.message ||
-        "Não foi possível realizar o login."
+          "Não foi possível realizar o login."
       );
     } finally {
       setEntrando(false);
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | ACESSO CLIENTE DEMO
+  |--------------------------------------------------------------------------
+  */
+
+  async function acessarMeuFord() {
+    setErro("");
+
+    try {
+      setEntrandoCliente(true);
+
+      /*
+       * Remove qualquer sessão anterior.
+       */
+
+      await removerUsuarioLogado();
+
+      /*
+       * Solicita ao backend um JWT
+       * do cliente demonstrativo.
+       */
+
+      const dados =
+        await fazerLoginClienteDemo();
+
+      const usuario =
+        dados.usuario;
+
+      if (
+        !usuario ||
+        !usuario.id ||
+        !usuario.nome ||
+        !usuario.email ||
+        !usuario.clienteId
+      ) {
+        throw new Error(
+          "Não foi possível iniciar a sessão do cliente."
+        );
+      }
+
+      if (!dados.token) {
+        throw new Error(
+          "Token do cliente não recebido."
+        );
+      }
+
+      /*
+       * Salva token e dados
+       * da sessão do proprietário.
+       */
+
+      await salvarToken(
+        dados.token
+      );
+
+      await salvarUsuarioLogado({
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        perfil: "CLIENTE",
+        clienteId:
+          usuario.clienteId,
+        demo:
+          usuario.demo === true,
+      });
+
+      router.replace(
+        "/meu-ford"
+      );
+    } catch (erro: any) {
+      console.log(
+        "Erro ao acessar Meu Ford:",
+        erro
+      );
+
+      /*
+       * Evita deixar uma sessão
+       * incompleta salva.
+       */
+
+      try {
+        await removerUsuarioLogado();
+      } catch {}
+
+      setErro(
+        erro?.message ||
+          "Não foi possível acessar o Meu Ford."
+      );
+    } finally {
+      setEntrandoCliente(false);
     }
   }
 
@@ -207,7 +292,7 @@ export default function HomeScreen() {
         style={[
           styles.contentWrapper,
           isMobile &&
-          styles.contentWrapperMobile,
+            styles.contentWrapperMobile,
         ]}
       >
         {/* LADO ESQUERDO */}
@@ -216,10 +301,12 @@ export default function HomeScreen() {
           style={[
             styles.leftContent,
             isMobile &&
-            styles.leftContentMobile,
+              styles.leftContentMobile,
           ]}
         >
-          <Text style={styles.badge}>
+          <Text
+            style={styles.badge}
+          >
             Pós-venda inteligente
           </Text>
 
@@ -227,19 +314,21 @@ export default function HomeScreen() {
             style={[
               styles.heroTitle,
               isMobile &&
-              styles.heroTitleMobile,
+                styles.heroTitleMobile,
             ]}
           >
             Ford Retain
           </Text>
 
-          <View style={styles.line} />
+          <View
+            style={styles.line}
+          />
 
           <Text
             style={[
               styles.heroText,
               isMobile &&
-              styles.heroTextMobile,
+                styles.heroTextMobile,
             ]}
           >
             Monitore clientes, acompanhe
@@ -255,7 +344,7 @@ export default function HomeScreen() {
           style={[
             styles.card,
             isMobile &&
-            styles.cardMobile,
+              styles.cardMobile,
           ]}
         >
           <Image
@@ -263,12 +352,13 @@ export default function HomeScreen() {
             style={[
               styles.logo,
               isMobile &&
-              styles.logoMobile,
+                styles.logoMobile,
             ]}
             resizeMode="contain"
           />
 
-          {tipoAcesso === "inicio" ? (
+          {tipoAcesso ===
+          "inicio" ? (
             <>
               <Text
                 style={
@@ -282,7 +372,7 @@ export default function HomeScreen() {
                 style={[
                   styles.cardTitle,
                   isMobile &&
-                  styles.cardTitleMobile,
+                    styles.cardTitleMobile,
                 ]}
               >
                 Ford Retain
@@ -320,13 +410,18 @@ export default function HomeScreen() {
                 </Text>
 
                 <TouchableOpacity
-                  style={
-                    styles.primaryButton
-                  }
+                  style={[
+                    styles.primaryButton,
+                    entrandoCliente &&
+                      styles.buttonDisabled,
+                  ]}
                   onPress={() =>
                     setTipoAcesso(
                       "funcionario"
                     )
+                  }
+                  disabled={
+                    entrandoCliente
                   }
                 >
                   <Text
@@ -342,7 +437,9 @@ export default function HomeScreen() {
               {/* DIVISOR */}
 
               <View
-                style={styles.divider}
+                style={
+                  styles.divider
+                }
               >
                 <View
                   style={
@@ -375,13 +472,16 @@ export default function HomeScreen() {
                 </Text>
 
                 <TouchableOpacity
-                  style={
-                    styles.secondaryButton
+                  style={[
+                    styles.secondaryButton,
+                    entrandoCliente &&
+                      styles.buttonDisabled,
+                  ]}
+                  onPress={
+                    acessarMeuFord
                   }
-                  onPress={() =>
-                    router.push(
-                      "/meu-ford"
-                    )
+                  disabled={
+                    entrandoCliente
                   }
                 >
                   <Text
@@ -389,10 +489,22 @@ export default function HomeScreen() {
                       styles.secondaryButtonText
                     }
                   >
-                    Acessar Meu Ford
+                    {entrandoCliente
+                      ? "Acessando..."
+                      : "Acessar Meu Ford"}
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              {erro ? (
+                <Text
+                  style={
+                    styles.errorTextHome
+                  }
+                >
+                  {erro}
+                </Text>
+              ) : null}
 
               <Text
                 style={
@@ -412,7 +524,7 @@ export default function HomeScreen() {
                 style={[
                   styles.cardTitle,
                   isMobile &&
-                  styles.cardTitleMobile,
+                    styles.cardTitleMobile,
                 ]}
               >
                 Acesse o painel
@@ -432,20 +544,26 @@ export default function HomeScreen() {
                 style={[
                   styles.input,
                   erro &&
-                    !email.trim()
+                  !email.trim()
                     ? styles.inputError
                     : null,
                 ]}
                 placeholder="E-mail corporativo"
                 placeholderTextColor="#8EA4C2"
                 value={email}
-                onChangeText={(texto) => {
-                  setEmail(texto);
+                onChangeText={(
+                  texto
+                ) => {
+                  setEmail(
+                    texto
+                  );
                   setErro("");
                 }}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                editable={!entrando}
+                editable={
+                  !entrando
+                }
               />
 
               {/* SENHA */}
@@ -454,7 +572,7 @@ export default function HomeScreen() {
                 style={[
                   styles.input,
                   erro &&
-                    !senha.trim()
+                  !senha.trim()
                     ? styles.inputError
                     : null,
                 ]}
@@ -462,14 +580,20 @@ export default function HomeScreen() {
                 placeholderTextColor="#8EA4C2"
                 secureTextEntry
                 value={senha}
-                onChangeText={(texto) => {
-                  setSenha(texto);
+                onChangeText={(
+                  texto
+                ) => {
+                  setSenha(
+                    texto
+                  );
                   setErro("");
                 }}
                 onSubmitEditing={
                   fazerLogin
                 }
-                editable={!entrando}
+                editable={
+                  !entrando
+                }
               />
 
               {/* ERRO */}
@@ -490,10 +614,14 @@ export default function HomeScreen() {
                 style={[
                   styles.button,
                   entrando &&
-                  styles.buttonDisabled,
+                    styles.buttonDisabled,
                 ]}
-                onPress={fazerLogin}
-                disabled={entrando}
+                onPress={
+                  fazerLogin
+                }
+                disabled={
+                  entrando
+                }
               >
                 <Text
                   style={
@@ -509,7 +637,9 @@ export default function HomeScreen() {
               {/* CREDENCIAIS */}
 
               <TouchableOpacity
-                disabled={entrando}
+                disabled={
+                  entrando
+                }
                 onPress={() =>
                   setMostrarCredenciais(
                     !mostrarCredenciais
@@ -546,7 +676,8 @@ export default function HomeScreen() {
                       styles.demoText
                     }
                   >
-                    E-mail: {emailDemo}
+                    E-mail:{" "}
+                    {emailDemo}
                   </Text>
 
                   <Text
@@ -554,7 +685,8 @@ export default function HomeScreen() {
                       styles.demoText
                     }
                   >
-                    Senha: {senhaDemo}
+                    Senha:{" "}
+                    {senhaDemo}
                   </Text>
 
                   <TouchableOpacity
@@ -564,7 +696,9 @@ export default function HomeScreen() {
                     onPress={
                       usarCredenciaisDemo
                     }
-                    disabled={entrando}
+                    disabled={
+                      entrando
+                    }
                   >
                     <Text
                       style={
@@ -583,8 +717,12 @@ export default function HomeScreen() {
                 style={
                   styles.backButton
                 }
-                onPress={voltarInicio}
-                disabled={entrando}
+                onPress={
+                  voltarInicio
+                }
+                disabled={
+                  entrando
+                }
               >
                 <Text
                   style={
@@ -617,7 +755,8 @@ const styles =
       flex: 1,
       width: "100%",
       minHeight: "100%",
-      backgroundColor: "#020B18",
+      backgroundColor:
+        "#020B18",
     },
 
     darkOverlay: {
@@ -827,6 +966,14 @@ const styles =
       lineHeight: 19,
       textAlign: "center",
       marginTop: 24,
+    },
+
+    errorTextHome: {
+      color: "#FF3B30",
+      fontSize: 13,
+      textAlign: "center",
+      marginTop: 14,
+      marginBottom: -8,
     },
 
     input: {

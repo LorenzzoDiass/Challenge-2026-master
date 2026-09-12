@@ -21,30 +21,90 @@ import {
   criarAgendamento,
 } from "../services/api";
 
+const HORA_ABERTURA = 8;
+const HORA_FECHAMENTO = 18;
+
 export default function Agendamento() {
   const params = useLocalSearchParams();
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const origem = Array.isArray(params.origem) ? params.origem[0] : params.origem;
+
+  const id = Array.isArray(params.id)
+    ? params.id[0]
+    : params.id;
+
+  const origem = Array.isArray(params.origem)
+    ? params.origem[0]
+    : params.origem;
 
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const veioDoCliente = origem === "cliente";
 
-  const [cliente, setCliente] = useState<any>(null);
-  const [carregando, setCarregando] = useState(true);
-  const [enviando, setEnviando] = useState(false);
-  const [concessionarias, setConcessionarias] = useState<string[]>([]);
-  const [unidade, setUnidade] = useState("");
-  const [dataSelecionada, setDataSelecionada] = useState(new Date());
-  const [horarioSelecionado, setHorarioSelecionado] = useState(new Date());
-  const [dataWeb, setDataWeb] = useState("");
-  const [horarioWeb, setHorarioWeb] = useState("");
-  const [servico, setServico] = useState("");
-  const [observacao, setObservacao] = useState("");
-  const [mostrarCalendario, setMostrarCalendario] = useState(false);
-  const [mostrarHorario, setMostrarHorario] = useState(false);
-  const [confirmado, setConfirmado] = useState(false);
-  const [erroFormulario, setErroFormulario] = useState("");
+  const veioDoCliente =
+    origem === "cliente" ||
+    origem === "beneficios";
+
+  const veioDosBeneficios =
+    origem === "beneficios";
+
+  const [cliente, setCliente] =
+    useState<any>(null);
+
+  const [carregando, setCarregando] =
+    useState(true);
+
+  const [enviando, setEnviando] =
+    useState(false);
+
+  const [
+    concessionarias,
+    setConcessionarias,
+  ] = useState<string[]>([]);
+
+  const [unidade, setUnidade] =
+    useState("");
+
+  const [
+    dataSelecionada,
+    setDataSelecionada,
+  ] = useState(new Date());
+
+  const [
+    horarioSelecionado,
+    setHorarioSelecionado,
+  ] = useState(() => {
+    const horario = new Date();
+    horario.setHours(8, 0, 0, 0);
+    return horario;
+  });
+
+  const [dataWeb, setDataWeb] =
+    useState("");
+
+  const [horarioWeb, setHorarioWeb] =
+    useState("");
+
+  const [servico, setServico] =
+    useState("");
+
+  const [observacao, setObservacao] =
+    useState("");
+
+  const [
+    mostrarCalendario,
+    setMostrarCalendario,
+  ] = useState(false);
+
+  const [
+    mostrarHorario,
+    setMostrarHorario,
+  ] = useState(false);
+
+  const [confirmado, setConfirmado] =
+    useState(false);
+
+  const [
+    erroFormulario,
+    setErroFormulario,
+  ] = useState("");
 
   useEffect(() => {
     async function carregarDados() {
@@ -54,81 +114,279 @@ export default function Agendamento() {
           return;
         }
 
-        const [dadosCliente, dadosConcessionarias] = await Promise.all([
+        const [
+          dadosCliente,
+          dadosConcessionarias,
+        ] = await Promise.all([
           buscarClientePorId(id),
           buscarConcessionarias(),
         ]);
 
         setCliente(dadosCliente);
-        setConcessionarias(dadosConcessionarias);
+        setConcessionarias(
+          dadosConcessionarias
+        );
+
+        if (veioDosBeneficios) {
+          setServico(
+            "Revisão preventiva"
+          );
+        }
       } catch (erro) {
-        console.log("Erro ao carregar dados:", erro);
+        console.log(
+          "Erro ao carregar dados:",
+          erro
+        );
       } finally {
         setCarregando(false);
       }
     }
 
     carregarDados();
-  }, [id]);
+  }, [id, veioDosBeneficios]);
 
   function formatarData(data: Date) {
-    return data.toLocaleDateString("pt-BR");
+    return data.toLocaleDateString(
+      "pt-BR"
+    );
   }
 
-  function formatarHorario(data: Date) {
-    return data.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  function formatarHorario(
+    data: Date
+  ) {
+    return data.toLocaleTimeString(
+      "pt-BR",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    );
   }
 
-  function formatarDataWeb(data: string) {
-    if (!data) return "";
+  function formatarDataWeb(
+    data: string
+  ) {
+    if (!data) {
+      return "";
+    }
+
     const partes = data.split("-");
+
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
   }
 
-  function alterarData(event: any, data?: Date) {
+  function obterDataHojeWeb() {
+    const hoje = new Date();
+
+    const ano =
+      hoje.getFullYear();
+
+    const mes = String(
+      hoje.getMonth() + 1
+    ).padStart(2, "0");
+
+    const dia = String(
+      hoje.getDate()
+    ).padStart(2, "0");
+
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  function criarDataSemHorario(
+    data: Date
+  ) {
+    return new Date(
+      data.getFullYear(),
+      data.getMonth(),
+      data.getDate()
+    );
+  }
+
+  function converterDataBrasileira(
+    data: string
+  ) {
+    const [dia, mes, ano] =
+      data.split("/").map(Number);
+
+    return new Date(
+      ano,
+      mes - 1,
+      dia
+    );
+  }
+
+  function converterHorarioParaMinutos(
+    horario: string
+  ) {
+    const [hora, minuto] =
+      horario.split(":").map(Number);
+
+    return hora * 60 + minuto;
+  }
+
+  function validarDataEHorario(
+    dataFinal: string,
+    horarioFinal: string
+  ) {
+    const agora = new Date();
+
+    const hoje =
+      criarDataSemHorario(agora);
+
+    const dataAgendamento =
+      converterDataBrasileira(
+        dataFinal
+      );
+
+    if (
+      Number.isNaN(
+        dataAgendamento.getTime()
+      )
+    ) {
+      return "Selecione uma data válida.";
+    }
+
+    if (
+      dataAgendamento.getTime() <
+      hoje.getTime()
+    ) {
+      return "Não é possível agendar para uma data anterior a hoje.";
+    }
+
+    const minutosAgendamento =
+      converterHorarioParaMinutos(
+        horarioFinal
+      );
+
+    if (
+      Number.isNaN(
+        minutosAgendamento
+      )
+    ) {
+      return "Selecione um horário válido.";
+    }
+
+    const abertura =
+      HORA_ABERTURA * 60;
+
+    const fechamento =
+      HORA_FECHAMENTO * 60;
+
+    if (
+      minutosAgendamento <
+        abertura ||
+      minutosAgendamento >
+        fechamento
+    ) {
+      return "Os agendamentos estão disponíveis das 08:00 às 18:00.";
+    }
+
+    const ehHoje =
+      dataAgendamento.getTime() ===
+      hoje.getTime();
+
+    if (ehHoje) {
+      const minutosAgora =
+        agora.getHours() * 60 +
+        agora.getMinutes();
+
+      if (
+        minutosAgendamento <=
+        minutosAgora
+      ) {
+        return "Para hoje, escolha um horário que ainda não tenha passado.";
+      }
+    }
+
+    return "";
+  }
+
+  function alterarData(
+    event: any,
+    data?: Date
+  ) {
     setMostrarCalendario(false);
 
     if (data) {
       setDataSelecionada(data);
+      setErroFormulario("");
     }
   }
 
-  function alterarHorario(event: any, data?: Date) {
+  function alterarHorario(
+    event: any,
+    data?: Date
+  ) {
     setMostrarHorario(false);
 
     if (data) {
       setHorarioSelecionado(data);
+      setErroFormulario("");
     }
   }
 
   function voltar() {
+    if (veioDosBeneficios) {
+      router.replace(
+        "/meus-beneficios"
+      );
+      return;
+    }
+
     if (veioDoCliente) {
-      router.replace("/meus-agendamentos");
+      router.replace(
+        "/meu-ford"
+      );
       return;
     }
 
     router.replace({
       pathname: "/detalhes",
-      params: { id: cliente.id },
+      params: {
+        id: cliente.id,
+      },
     });
   }
 
   async function confirmarAgendamento() {
     const dataFinal =
       Platform.OS === "web"
-        ? formatarDataWeb(dataWeb)
-        : formatarData(dataSelecionada);
+        ? formatarDataWeb(
+            dataWeb
+          )
+        : formatarData(
+            dataSelecionada
+          );
 
     const horarioFinal =
       Platform.OS === "web"
         ? horarioWeb
-        : formatarHorario(horarioSelecionado);
+        : formatarHorario(
+            horarioSelecionado
+          );
 
-    if (!unidade || !servico || !dataFinal || !horarioFinal) {
-      setErroFormulario("Preencha todos os campos obrigatórios.");
+    if (
+      !unidade ||
+      !servico ||
+      !dataFinal ||
+      !horarioFinal
+    ) {
+      setErroFormulario(
+        "Preencha todos os campos obrigatórios."
+      );
+      return;
+    }
+
+    const erroDataHorario =
+      validarDataEHorario(
+        dataFinal,
+        horarioFinal
+      );
+
+    if (erroDataHorario) {
+      setErroFormulario(
+        erroDataHorario
+      );
       return;
     }
 
@@ -149,16 +407,24 @@ export default function Agendamento() {
 
       setTimeout(() => {
         if (veioDoCliente) {
-          router.replace("/meus-agendamentos");
+          router.replace(
+            "/meus-agendamentos"
+          );
         } else {
-          router.replace("/agendamentos");
+          router.replace(
+            "/agendamentos"
+          );
         }
       }, 1200);
     } catch (erro: any) {
-      console.log("Erro ao criar agendamento:", erro);
+      console.log(
+        "Erro ao criar agendamento:",
+        erro
+      );
 
       setErroFormulario(
-        erro.message || "Não foi possível criar o agendamento."
+        erro.message ||
+          "Não foi possível criar o agendamento."
       );
 
       setEnviando(false);
@@ -170,13 +436,15 @@ export default function Agendamento() {
       <View
         style={[
           styles.container,
-          isMobile && styles.containerMobile,
+          isMobile &&
+            styles.containerMobile,
         ]}
       >
         <Text
           style={[
             styles.title,
-            isMobile && styles.titleMobile,
+            isMobile &&
+              styles.titleMobile,
           ]}
         >
           Carregando cliente...
@@ -190,13 +458,15 @@ export default function Agendamento() {
       <View
         style={[
           styles.container,
-          isMobile && styles.containerMobile,
+          isMobile &&
+            styles.containerMobile,
         ]}
       >
         <Text
           style={[
             styles.title,
-            isMobile && styles.titleMobile,
+            isMobile &&
+              styles.titleMobile,
           ]}
         >
           Cliente não encontrado.
@@ -209,18 +479,27 @@ export default function Agendamento() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={
-        isMobile ? styles.scrollMobile : undefined
+        isMobile
+          ? styles.scrollMobile
+          : undefined
       }
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={
+        false
+      }
     >
-      <TouchableOpacity onPress={voltar}>
-        <Text style={styles.back}>Voltar</Text>
+      <TouchableOpacity
+        onPress={voltar}
+      >
+        <Text style={styles.back}>
+          Voltar
+        </Text>
       </TouchableOpacity>
 
       <Text
         style={[
           styles.title,
-          isMobile && styles.titleMobile,
+          isMobile &&
+            styles.titleMobile,
         ]}
       >
         Agendar revisão
@@ -229,7 +508,8 @@ export default function Agendamento() {
       <Text
         style={[
           styles.subtitle,
-          isMobile && styles.subtitleMobile,
+          isMobile &&
+            styles.subtitleMobile,
         ]}
       >
         {veioDoCliente
@@ -237,44 +517,101 @@ export default function Agendamento() {
           : "Preencha as informações para registrar o agendamento do cliente."}
       </Text>
 
+      {veioDosBeneficios && (
+        <View
+          style={
+            styles.benefitAppliedBox
+          }
+        >
+          <Text
+            style={
+              styles.benefitAppliedLabel
+            }
+          >
+            BENEFÍCIO APLICADO
+          </Text>
+
+          <Text
+            style={
+              styles.benefitAppliedTitle
+            }
+          >
+            10% OFF na revisão preventiva
+          </Text>
+
+          <Text
+            style={
+              styles.benefitAppliedText
+            }
+          >
+            Este benefício será
+            considerado no atendimento
+            da sua revisão na rede
+            autorizada Ford.
+          </Text>
+        </View>
+      )}
+
       <View
         style={[
           styles.clientCard,
-          isMobile && styles.cardMobile,
+          isMobile &&
+            styles.cardMobile,
         ]}
       >
         <Text
           style={[
             styles.clientName,
-            isMobile && styles.clientNameMobile,
+            isMobile &&
+              styles.clientNameMobile,
           ]}
         >
           {cliente.nome}
         </Text>
 
-        <Text style={styles.clientInfo}>
+        <Text
+          style={
+            styles.clientInfo
+          }
+        >
           {cliente.modelo}
         </Text>
 
-        <Text style={styles.clientInfo}>
-          {cliente.km.toLocaleString("pt-BR")} km • {cliente.cidade}
+        <Text
+          style={
+            styles.clientInfo
+          }
+        >
+          {cliente.km.toLocaleString(
+            "pt-BR"
+          )}{" "}
+          km • {cliente.cidade}
         </Text>
       </View>
 
       <View
         style={[
           styles.formCard,
-          isMobile && styles.cardMobile,
+          isMobile &&
+            styles.cardMobile,
         ]}
       >
         <Text style={styles.label}>
           Unidade / concessionária *
         </Text>
 
-        <View style={styles.pickerWrapper}>
+        <View
+          style={
+            styles.pickerWrapper
+          }
+        >
           <Picker
             selectedValue={unidade}
-            onValueChange={(valor) => setUnidade(valor)}
+            onValueChange={(
+              valor
+            ) =>
+              setUnidade(valor)
+            }
             style={styles.picker}
             dropdownIconColor="#FFFFFF"
           >
@@ -283,123 +620,215 @@ export default function Agendamento() {
               value=""
             />
 
-            {concessionarias.map((item) => (
-              <Picker.Item
-                key={item}
-                label={item}
-                value={item}
-              />
-            ))}
+            {concessionarias.map(
+              (item) => (
+                <Picker.Item
+                  key={item}
+                  label={item}
+                  value={item}
+                />
+              )
+            )}
           </Picker>
         </View>
 
         <View
           style={[
             styles.inputRow,
-            isMobile && styles.inputRowMobile,
+            isMobile &&
+              styles.inputRowMobile,
           ]}
         >
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Data *</Text>
+          <View
+            style={
+              styles.inputGroup
+            }
+          >
+            <Text
+              style={
+                styles.label
+              }
+            >
+              Data *
+            </Text>
 
-            {Platform.OS === "web" ? (
+            {Platform.OS ===
+            "web" ? (
               <input
                 type="date"
                 value={dataWeb}
-                min={new Date().toISOString().split("T")[0]}
-                onChange={(event) =>
-                  setDataWeb(event.target.value)
+                min={
+                  obterDataHojeWeb()
                 }
+                onChange={(
+                  event
+                ) => {
+                  setDataWeb(
+                    event.target.value
+                  );
+                  setErroFormulario(
+                    ""
+                  );
+                }}
                 style={{
                   width: "100%",
                   height: 56,
-                  backgroundColor: "#0A1A33",
-                  border: "1px solid #0D2A52",
+                  backgroundColor:
+                    "#0A1A33",
+                  border:
+                    "1px solid #0D2A52",
                   borderRadius: 14,
                   paddingLeft: 16,
                   paddingRight: 16,
                   color: "#FFFFFF",
                   fontSize: 16,
                   marginBottom: 18,
-                  boxSizing: "border-box",
-                  colorScheme: "dark",
+                  boxSizing:
+                    "border-box",
+                  colorScheme:
+                    "dark",
                 }}
               />
             ) : (
               <>
                 <TouchableOpacity
-                  style={styles.selectorButton}
+                  style={
+                    styles.selectorButton
+                  }
                   onPress={() =>
-                    setMostrarCalendario(true)
+                    setMostrarCalendario(
+                      true
+                    )
                   }
                 >
-                  <Text style={styles.selectorText}>
-                    {formatarData(dataSelecionada)}
+                  <Text
+                    style={
+                      styles.selectorText
+                    }
+                  >
+                    {formatarData(
+                      dataSelecionada
+                    )}
                   </Text>
                 </TouchableOpacity>
 
                 {mostrarCalendario && (
                   <DateTimePicker
-                    value={dataSelecionada}
+                    value={
+                      dataSelecionada
+                    }
                     mode="date"
                     display="default"
-                    minimumDate={new Date()}
-                    onChange={alterarData}
+                    minimumDate={
+                      new Date()
+                    }
+                    onChange={
+                      alterarData
+                    }
                   />
                 )}
               </>
             )}
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Horário *</Text>
+          <View
+            style={
+              styles.inputGroup
+            }
+          >
+            <Text
+              style={
+                styles.label
+              }
+            >
+              Horário *
+            </Text>
 
-            {Platform.OS === "web" ? (
+            {Platform.OS ===
+            "web" ? (
               <input
                 type="time"
-                value={horarioWeb}
-                onChange={(event) =>
-                  setHorarioWeb(event.target.value)
+                value={
+                  horarioWeb
                 }
+                min="08:00"
+                max="18:00"
+                onChange={(
+                  event
+                ) => {
+                  setHorarioWeb(
+                    event.target.value
+                  );
+                  setErroFormulario(
+                    ""
+                  );
+                }}
                 style={{
                   width: "100%",
                   height: 56,
-                  backgroundColor: "#0A1A33",
-                  border: "1px solid #0D2A52",
+                  backgroundColor:
+                    "#0A1A33",
+                  border:
+                    "1px solid #0D2A52",
                   borderRadius: 14,
                   paddingLeft: 16,
                   paddingRight: 16,
                   color: "#FFFFFF",
                   fontSize: 16,
-                  marginBottom: 18,
-                  boxSizing: "border-box",
-                  colorScheme: "dark",
+                  marginBottom: 8,
+                  boxSizing:
+                    "border-box",
+                  colorScheme:
+                    "dark",
                 }}
               />
             ) : (
               <>
                 <TouchableOpacity
-                  style={styles.selectorButton}
+                  style={
+                    styles.selectorButton
+                  }
                   onPress={() =>
-                    setMostrarHorario(true)
+                    setMostrarHorario(
+                      true
+                    )
                   }
                 >
-                  <Text style={styles.selectorText}>
-                    {formatarHorario(horarioSelecionado)}
+                  <Text
+                    style={
+                      styles.selectorText
+                    }
+                  >
+                    {formatarHorario(
+                      horarioSelecionado
+                    )}
                   </Text>
                 </TouchableOpacity>
 
                 {mostrarHorario && (
                   <DateTimePicker
-                    value={horarioSelecionado}
+                    value={
+                      horarioSelecionado
+                    }
                     mode="time"
                     display="default"
                     is24Hour
-                    onChange={alterarHorario}
+                    onChange={
+                      alterarHorario
+                    }
                   />
                 )}
               </>
             )}
+
+            <Text
+              style={
+                styles.scheduleHint
+              }
+            >
+              Horários disponíveis:
+              08:00 às 18:00
+            </Text>
           </View>
         </View>
 
@@ -407,10 +836,18 @@ export default function Agendamento() {
           Tipo de serviço *
         </Text>
 
-        <View style={styles.pickerWrapper}>
+        <View
+          style={
+            styles.pickerWrapper
+          }
+        >
           <Picker
             selectedValue={servico}
-            onValueChange={(valor) => setServico(valor)}
+            onValueChange={(
+              valor
+            ) =>
+              setServico(valor)
+            }
             style={styles.picker}
             dropdownIconColor="#FFFFFF"
           >
@@ -473,12 +910,23 @@ export default function Agendamento() {
           placeholderTextColor="#7F91AA"
           multiline
           value={observacao}
-          onChangeText={setObservacao}
+          onChangeText={
+            setObservacao
+          }
         />
 
-        {erroFormulario !== "" && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>
+        {erroFormulario !==
+          "" && (
+          <View
+            style={
+              styles.errorBox
+            }
+          >
+            <Text
+              style={
+                styles.errorText
+              }
+            >
               {erroFormulario}
             </Text>
           </View>
@@ -487,12 +935,19 @@ export default function Agendamento() {
         <TouchableOpacity
           style={[
             styles.button,
-            enviando && styles.buttonDisabled,
+            enviando &&
+              styles.buttonDisabled,
           ]}
-          onPress={confirmarAgendamento}
+          onPress={
+            confirmarAgendamento
+          }
           disabled={enviando}
         >
-          <Text style={styles.buttonText}>
+          <Text
+            style={
+              styles.buttonText
+            }
+          >
             {enviando
               ? "Confirmando..."
               : "Confirmar agendamento"}
@@ -504,19 +959,25 @@ export default function Agendamento() {
         <View
           style={[
             styles.successBox,
-            isMobile && styles.cardMobile,
+            isMobile &&
+              styles.cardMobile,
           ]}
         >
           <Text
             style={[
               styles.successTitle,
-              isMobile && styles.successTitleMobile,
+              isMobile &&
+                styles.successTitleMobile,
             ]}
           >
             Agendamento confirmado
           </Text>
 
-          <Text style={styles.successText}>
+          <Text
+            style={
+              styles.successText
+            }
+          >
             {veioDoCliente
               ? "Sua revisão foi agendada com sucesso."
               : "Agendamento criado com sucesso."}
@@ -527,221 +988,269 @@ export default function Agendamento() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#020B18",
-    padding: 28,
-  },
+const styles =
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor:
+        "#020B18",
+      padding: 28,
+    },
 
-  containerMobile: {
-    padding: 18,
-  },
+    containerMobile: {
+      padding: 18,
+    },
 
-  scrollMobile: {
-    paddingBottom: 40,
-  },
+    scrollMobile: {
+      paddingBottom: 40,
+    },
 
-  back: {
-    color: "#4C8DFF",
-    fontSize: 16,
-    fontWeight: "800",
-    marginBottom: 20,
-  },
+    back: {
+      color: "#4C8DFF",
+      fontSize: 16,
+      fontWeight: "800",
+      marginBottom: 20,
+    },
 
-  title: {
-    color: "#FFFFFF",
-    fontSize: 44,
-    fontWeight: "900",
-  },
+    title: {
+      color: "#FFFFFF",
+      fontSize: 44,
+      fontWeight: "900",
+    },
 
-  titleMobile: {
-    fontSize: 32,
-  },
+    titleMobile: {
+      fontSize: 32,
+    },
 
-  subtitle: {
-    color: "#9FB2CC",
-    fontSize: 17,
-    marginTop: 8,
-    marginBottom: 28,
-  },
+    subtitle: {
+      color: "#9FB2CC",
+      fontSize: 17,
+      marginTop: 8,
+      marginBottom: 28,
+    },
 
-  subtitleMobile: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
+    subtitleMobile: {
+      fontSize: 15,
+      lineHeight: 22,
+    },
 
-  clientCard: {
-    backgroundColor: "#07162E",
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: "#0D2A52",
-    marginBottom: 24,
-  },
+    benefitAppliedBox: {
+      backgroundColor:
+        "rgba(30, 215, 96, 0.08)",
+      borderWidth: 1,
+      borderColor:
+        "rgba(30, 215, 96, 0.30)",
+      borderRadius: 18,
+      padding: 20,
+      marginBottom: 24,
+    },
 
-  cardMobile: {
-    borderRadius: 20,
-    padding: 18,
-  },
+    benefitAppliedLabel: {
+      color: "#1ED760",
+      fontSize: 11,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
 
-  clientName: {
-    color: "#FFFFFF",
-    fontSize: 26,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
+    benefitAppliedTitle: {
+      color: "#FFFFFF",
+      fontSize: 20,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
 
-  clientNameMobile: {
-    fontSize: 22,
-  },
+    benefitAppliedText: {
+      color: "#A8BAD1",
+      fontSize: 14,
+      lineHeight: 21,
+    },
 
-  clientInfo: {
-    color: "#9FB2CC",
-    fontSize: 16,
-    marginBottom: 4,
-  },
+    clientCard: {
+      backgroundColor:
+        "#07162E",
+      borderRadius: 24,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: "#0D2A52",
+      marginBottom: 24,
+    },
 
-  formCard: {
-    backgroundColor: "#07162E",
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: "#0D2A52",
-    marginBottom: 24,
-  },
+    cardMobile: {
+      borderRadius: 20,
+      padding: 18,
+    },
 
-  inputRow: {
-    flexDirection: "row",
-    gap: 16,
-  },
+    clientName: {
+      color: "#FFFFFF",
+      fontSize: 26,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
 
-  inputRowMobile: {
-    flexDirection: "column",
-    gap: 0,
-  },
+    clientNameMobile: {
+      fontSize: 22,
+    },
 
-  inputGroup: {
-    flex: 1,
-  },
+    clientInfo: {
+      color: "#9FB2CC",
+      fontSize: 16,
+      marginBottom: 4,
+    },
 
-  label: {
-    color: "#D7E3F4",
-    fontSize: 15,
-    fontWeight: "800",
-    marginBottom: 8,
-  },
+    formCard: {
+      backgroundColor:
+        "#07162E",
+      borderRadius: 24,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: "#0D2A52",
+      marginBottom: 24,
+    },
 
-  pickerWrapper: {
-    backgroundColor: "#0A1A33",
-    borderWidth: 1,
-    borderColor: "#0D2A52",
-    borderRadius: 14,
-    marginBottom: 18,
-    overflow: "hidden",
-    minHeight: 56,
-    justifyContent: "center",
-  },
+    inputRow: {
+      flexDirection: "row",
+      gap: 16,
+    },
 
-  picker: {
-    color: "#FFFFFF",
-    backgroundColor: "#0A1A33",
-    height: 56,
-    width: "100%",
-  },
+    inputRowMobile: {
+      flexDirection: "column",
+      gap: 0,
+    },
 
-  selectorButton: {
-    backgroundColor: "#0A1A33",
-    borderWidth: 1,
-    borderColor: "#0D2A52",
-    borderRadius: 14,
-    minHeight: 56,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    marginBottom: 18,
-    justifyContent: "center",
-  },
+    inputGroup: {
+      flex: 1,
+    },
 
-  selectorText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-  },
+    label: {
+      color: "#D7E3F4",
+      fontSize: 15,
+      fontWeight: "800",
+      marginBottom: 8,
+    },
 
-  input: {
-    backgroundColor: "#0A1A33",
-    borderWidth: 1,
-    borderColor: "#0D2A52",
-    borderRadius: 14,
-    minHeight: 56,
-    paddingVertical: 15,
-    paddingHorizontal: 16,
-    color: "#FFFFFF",
-    fontSize: 16,
-    marginBottom: 18,
-  },
+    pickerWrapper: {
+      backgroundColor:
+        "#0A1A33",
+      borderWidth: 1,
+      borderColor: "#0D2A52",
+      borderRadius: 14,
+      marginBottom: 18,
+      overflow: "hidden",
+      minHeight: 56,
+      justifyContent: "center",
+    },
 
-  textArea: {
-    minHeight: 110,
-    textAlignVertical: "top",
-  },
+    picker: {
+      color: "#FFFFFF",
+      backgroundColor:
+        "#0A1A33",
+      height: 56,
+      width: "100%",
+    },
 
-  errorBox: {
-    backgroundColor: "rgba(255, 59, 48, 0.12)",
-    borderWidth: 1,
-    borderColor: "#FF3B30",
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 16,
-  },
+    selectorButton: {
+      backgroundColor:
+        "#0A1A33",
+      borderWidth: 1,
+      borderColor: "#0D2A52",
+      borderRadius: 14,
+      minHeight: 56,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      marginBottom: 8,
+      justifyContent: "center",
+    },
 
-  errorText: {
-    color: "#FF6B63",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+    selectorText: {
+      color: "#FFFFFF",
+      fontSize: 16,
+    },
 
-  button: {
-    backgroundColor: "#0057FF",
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: "center",
-    marginTop: 6,
-  },
+    scheduleHint: {
+      color: "#7F91AA",
+      fontSize: 12,
+      marginBottom: 18,
+    },
 
-  buttonDisabled: {
-    opacity: 0.65,
-  },
+    input: {
+      backgroundColor:
+        "#0A1A33",
+      borderWidth: 1,
+      borderColor: "#0D2A52",
+      borderRadius: 14,
+      minHeight: 56,
+      paddingVertical: 15,
+      paddingHorizontal: 16,
+      color: "#FFFFFF",
+      fontSize: 16,
+      marginBottom: 18,
+    },
 
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "900",
-  },
+    textArea: {
+      minHeight: 110,
+      textAlignVertical: "top",
+    },
 
-  successBox: {
-    backgroundColor: "rgba(40, 215, 100, 0.14)",
-    borderWidth: 1,
-    borderColor: "#28D764",
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 50,
-  },
+    errorBox: {
+      backgroundColor:
+        "rgba(255, 59, 48, 0.12)",
+      borderWidth: 1,
+      borderColor: "#FF3B30",
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      marginBottom: 16,
+    },
 
-  successTitle: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 12,
-  },
+    errorText: {
+      color: "#FF6B63",
+      fontSize: 14,
+      fontWeight: "700",
+    },
 
-  successTitleMobile: {
-    fontSize: 21,
-  },
+    button: {
+      backgroundColor:
+        "#0057FF",
+      paddingVertical: 18,
+      borderRadius: 16,
+      alignItems: "center",
+      marginTop: 6,
+    },
 
-  successText: {
-    color: "#D7E3F4",
-    fontSize: 16,
-    lineHeight: 26,
-  },
-});
+    buttonDisabled: {
+      opacity: 0.65,
+    },
+
+    buttonText: {
+      color: "#FFFFFF",
+      fontSize: 16,
+      fontWeight: "900",
+    },
+
+    successBox: {
+      backgroundColor:
+        "rgba(40, 215, 100, 0.14)",
+      borderWidth: 1,
+      borderColor: "#28D764",
+      borderRadius: 24,
+      padding: 24,
+      marginBottom: 50,
+    },
+
+    successTitle: {
+      color: "#FFFFFF",
+      fontSize: 24,
+      fontWeight: "900",
+      marginBottom: 12,
+    },
+
+    successTitleMobile: {
+      fontSize: 21,
+    },
+
+    successText: {
+      color: "#D7E3F4",
+      fontSize: 16,
+      lineHeight: 26,
+    },
+  });

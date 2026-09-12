@@ -15,52 +15,73 @@ async function criarHeadersAutenticados() {
   };
 }
 
+async function lerResposta(resposta: Response) {
+  const dados = await resposta.json();
+
+  if (!resposta.ok) {
+    throw new Error(
+      dados.mensagem ||
+        "Erro ao processar solicitação"
+    );
+  }
+
+  return dados;
+}
+
 export async function fazerLogin(
   email: string,
   senha: string
 ) {
-  const resposta = await fetch(`${API_URL}/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      senha,
-    }),
-  });
+  const resposta = await fetch(
+    `${API_URL}/login`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        senha,
+      }),
+    }
+  );
 
-  const dados = await resposta.json();
+  return lerResposta(resposta);
+}
 
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem || "Erro ao realizar login"
-    );
-  }
+export async function fazerLoginClienteDemo() {
+  const resposta = await fetch(
+    `${API_URL}/login-cliente-demo`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
 
-  return dados;
+  return lerResposta(resposta);
 }
 
 export async function buscarClientes() {
-  const headers = await criarHeadersAutenticados();
+  const headers =
+    await criarHeadersAutenticados();
 
-  const resposta = await fetch(`${API_URL}/clientes`, {
-    headers,
-  });
+  const resposta = await fetch(
+    `${API_URL}/clientes`,
+    {
+      headers,
+    }
+  );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem || "Erro ao buscar clientes"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
 
-export async function buscarClientePorId(id: string) {
-  const headers = await criarHeadersAutenticados();
+export async function buscarClientePorId(
+  id: string
+) {
+  const headers =
+    await criarHeadersAutenticados();
 
   const resposta = await fetch(
     `${API_URL}/clientes/${id}`,
@@ -69,22 +90,15 @@ export async function buscarClientePorId(id: string) {
     }
   );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem || "Erro ao buscar cliente"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
 
 export async function atualizarStatus(
   id: string,
   status: string
 ) {
-  const headers = await criarHeadersAutenticados();
+  const headers =
+    await criarHeadersAutenticados();
 
   const resposta = await fetch(
     `${API_URL}/clientes/${id}/status`,
@@ -97,22 +111,15 @@ export async function atualizarStatus(
     }
   );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem || "Erro ao atualizar status"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
 
 export async function atualizarQuilometragem(
   id: string,
   quilometragem: number
 ) {
-  const headers = await criarHeadersAutenticados();
+  const headers =
+    await criarHeadersAutenticados();
 
   const resposta = await fetch(
     `${API_URL}/clientes/${id}/quilometragem`,
@@ -125,20 +132,12 @@ export async function atualizarQuilometragem(
     }
   );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem ||
-        "Erro ao atualizar quilometragem"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
 
 export async function buscarAgendamentos() {
-  const headers = await criarHeadersAutenticados();
+  const headers =
+    await criarHeadersAutenticados();
 
   const resposta = await fetch(
     `${API_URL}/agendamentos`,
@@ -147,22 +146,14 @@ export async function buscarAgendamentos() {
     }
   );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem ||
-        "Erro ao buscar agendamentos"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
 
 export async function buscarAgendamentosDoCliente(
   id: string
 ) {
-  const headers = await criarHeadersAutenticados();
+  const headers =
+    await criarHeadersAutenticados();
 
   const resposta = await fetch(
     `${API_URL}/clientes/${id}/agendamentos`,
@@ -171,48 +162,34 @@ export async function buscarAgendamentosDoCliente(
     }
   );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem ||
-        "Erro ao buscar agendamentos do cliente"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
 
 export async function criarAgendamento(
   dadosAgendamento: any
 ) {
-  const headers = await criarHeadersAutenticados();
+  const headers =
+    await criarHeadersAutenticados();
 
   const resposta = await fetch(
     `${API_URL}/agendamentos`,
     {
       method: "POST",
       headers,
-      body: JSON.stringify(dadosAgendamento),
+      body: JSON.stringify(
+        dadosAgendamento
+      ),
     }
   );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem ||
-        "Erro ao criar agendamento"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
 
 export async function concluirAgendamento(
   id: string
 ) {
-  const headers = await criarHeadersAutenticados();
+  const headers =
+    await criarHeadersAutenticados();
 
   const resposta = await fetch(
     `${API_URL}/agendamentos/${id}/concluir`,
@@ -222,16 +199,7 @@ export async function concluirAgendamento(
     }
   );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem ||
-        "Erro ao concluir agendamento"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
 
 export async function buscarConcessionarias() {
@@ -239,16 +207,7 @@ export async function buscarConcessionarias() {
     `${API_URL}/concessionarias`
   );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem ||
-        "Erro ao buscar concessionárias"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
 
 export async function criarUsuario(
@@ -256,26 +215,21 @@ export async function criarUsuario(
   email: string,
   senha: string
 ) {
-  const resposta = await fetch(`${API_URL}/usuarios`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      nome,
-      email,
-      senha,
-    }),
-  });
+  const resposta = await fetch(
+    `${API_URL}/usuarios`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+      body: JSON.stringify({
+        nome,
+        email,
+        senha,
+      }),
+    }
+  );
 
-  const dados = await resposta.json();
-
-  if (!resposta.ok) {
-    throw new Error(
-      dados.mensagem ||
-        "Erro ao cadastrar usuário"
-    );
-  }
-
-  return dados;
+  return lerResposta(resposta);
 }
