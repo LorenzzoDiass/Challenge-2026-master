@@ -1,93 +1,231 @@
-# Ford Retain 🚘
+# Ford Retain
 
-Sistema inteligente de retenção pós-venda desenvolvido para monitoramento de clientes Ford com risco de abandono no pós-venda.
+Plataforma inteligente de retenção pós-venda desenvolvida para apoiar a Ford e sua rede de concessionárias na identificação de clientes com maior risco de evasão e na criação de jornadas de retenção.
 
-O projeto foi desenvolvido como parte do **Challenge 2 — Pós-Vendas**, com foco em experiência do usuário, gestão de clientes, acompanhamento de revisões, analytics e retenção de clientes.
+O projeto foi desenvolvido para o **Challenge Ford — Pós-Vendas**, integrando análise de risco, gestão de clientes, acompanhamento de revisões, agendamentos e uma jornada dedicada ao proprietário Ford.
 
----
+A solução possui duas experiências integradas:
 
-# ✨ Funcionalidades
-
-- Dashboard inteligente de retenção
-- Cadastro de usuários
-- Login e autenticação
-- Proteção de senhas com bcrypt
-- Classificação de risco dos clientes
-- Analytics e insights operacionais
-- Gestão de clientes e veículos
-- Busca e filtros de clientes
-- Tela de detalhes completa
-- Atualização de status dos clientes
-- Sistema de agendamento de revisões
-- Seleção de concessionária
-- Registro de data, horário e serviço
-- Persistência dos dados
-- Interface responsiva para desktop e mobile
-- Navegação com Expo Router
-- Integração com API REST
+- **Painel corporativo**, utilizado pela equipe de pós-venda.
+- **Meu Ford**, voltado ao proprietário do veículo.
 
 ---
 
-# 📊 Módulos do sistema
+# Objetivo da solução
 
-## Dashboard
+O Ford Retain busca apoiar a retenção de clientes dentro da rede autorizada Ford.
 
-- Visão geral dos clientes
-- Indicadores de risco
-- Clientes prioritários
-- Navegação rápida entre os módulos
+A plataforma utiliza informações do cliente, do veículo e do histórico de pós-venda para identificar situações que podem representar maior risco de abandono.
 
-## Clientes
+A partir dessas informações, a equipe consegue:
 
-- Listagem de clientes e veículos
-- Busca por cliente, veículo ou cidade
-- Filtros por nível de risco
-- Cards responsivos
-- Informações de contato
-- Status de acompanhamento
+- Identificar clientes prioritários.
+- Visualizar fatores relacionados ao risco.
+- Acompanhar veículos e revisões.
+- Registrar ações de retenção.
+- Agendar serviços.
+- Acompanhar agendamentos.
+- Oferecer benefícios de retenção.
+- Aproximar a jornada do cliente da operação de pós-venda.
 
-## Detalhes
+O fluxo principal da solução é:
 
-- Informações completas do cliente
-- Dados do veículo
-- Quilometragem
-- Última revisão
-- Situação da garantia
-- Motivo da classificação de risco
-- Sugestão de ação
-- Atualização do status do cliente
-- Acesso ao agendamento de revisão
-
-## Analytics & IA
-
-- Distribuição dos clientes por risco
-- Indicadores operacionais
-- Média de quilometragem
-- Informações para auxiliar na priorização dos clientes
-
-## Agendamentos
-
-- Registro de revisões
-- Seleção de concessionária
-- Escolha de data e horário
-- Tipo de serviço
-- Campo de observações
-- Status do agendamento
-- Atualização automática do status do cliente
-
-## Cadastro e Login
-
-- Cadastro de novos usuários
-- Validação de nome e e-mail
-- Validação e confirmação de senha
-- Verificação de e-mail já cadastrado
-- Exibição e ocultação da senha
-- Senhas protegidas com bcrypt
-- Login integrado ao banco de dados
+```text
+Dados do cliente e veículo
+        ↓
+Análise de risco
+        ↓
+Priorização do cliente
+        ↓
+Ação de retenção
+        ↓
+Benefício / contato
+        ↓
+Agendamento da revisão
+        ↓
+Atendimento na concessionária
+        ↓
+Retenção do cliente
+```
 
 ---
 
-# 🛠️ Tecnologias utilizadas
+# Funcionalidades
+
+## Painel corporativo
+
+O acesso corporativo foi desenvolvido para a operação de pós-venda.
+
+Principais funcionalidades:
+
+- Login de funcionário.
+- Autenticação utilizando JWT.
+- Dashboard de retenção.
+- Indicadores por nível de risco.
+- Clientes prioritários.
+- Gestão de clientes e veículos.
+- Busca de clientes.
+- Filtros por risco.
+- Visualização detalhada do cliente.
+- Atualização do status de acompanhamento.
+- Atualização de quilometragem.
+- Visualização dos fatores de risco.
+- Sugestão de ação de retenção.
+- Gestão de agendamentos.
+- Conclusão de atendimentos.
+- Analytics operacionais.
+
+---
+
+# Meu Ford
+
+O Ford Retain também possui uma jornada dedicada ao proprietário.
+
+Por meio da área **Meu Ford**, o cliente pode acessar informações relacionadas ao seu veículo e ao pós-venda.
+
+Entre as funcionalidades estão:
+
+- Acesso autenticado do cliente.
+- Visualização dos dados do veículo.
+- Consulta da quilometragem.
+- Informações sobre revisão.
+- Situação da garantia.
+- Visualização de benefício de retenção.
+- Agendamento de revisão.
+- Seleção de concessionária.
+- Escolha de data e horário.
+- Consulta dos próprios agendamentos.
+
+A jornada demonstra como ações identificadas pela operação de pós-venda podem chegar ao cliente por meio de uma experiência digital integrada.
+
+---
+
+# Dashboard
+
+O dashboard apresenta uma visão geral da operação de retenção.
+
+Entre os indicadores disponíveis estão:
+
+- Clientes classificados como alto risco.
+- Clientes próximos da revisão.
+- Clientes classificados como baixo risco.
+- Clientes prioritários para contato.
+- Acesso rápido aos principais módulos.
+
+---
+
+# Clientes
+
+O módulo de clientes permite:
+
+- Listagem de clientes e veículos.
+- Busca por informações do cliente.
+- Filtros por nível de risco.
+- Visualização de informações de contato.
+- Consulta de veículo e quilometragem.
+- Acompanhamento do status de retenção.
+- Acesso à tela detalhada de cada cliente.
+
+---
+
+# Detalhes do cliente
+
+A tela de detalhes concentra informações relevantes para a estratégia de retenção:
+
+- Dados pessoais.
+- Informações de contato.
+- Veículo.
+- Quilometragem atual.
+- Próxima revisão.
+- Última revisão.
+- Situação da garantia.
+- Classificação de risco.
+- Motivos associados ao risco.
+- Sugestão de ação.
+- Status do acompanhamento.
+- Histórico relacionado ao pós-venda.
+
+---
+
+# Retain Score
+
+O Ford Retain utiliza um mecanismo chamado **Retain Score** para auxiliar na priorização dos clientes.
+
+O score considera fatores relacionados ao pós-venda, como:
+
+- Quilometragem.
+- Tempo desde a última revisão.
+- Situação da garantia.
+- Status atual do relacionamento com o cliente.
+
+O resultado é convertido em uma pontuação de **0 a 100** e utilizado para classificar o cliente em:
+
+- **Baixo risco**
+- **Médio risco**
+- **Alto risco**
+
+O Retain Score funciona como uma regra de apoio à decisão e priorização operacional.
+
+> Nesta versão do projeto, o Retain Score é baseado em regras de negócio e não representa um modelo de Machine Learning treinado.
+
+---
+
+# Analytics
+
+O módulo de Analytics apresenta informações consolidadas para apoiar a operação de pós-venda.
+
+Entre os dados apresentados estão:
+
+- Distribuição dos clientes por nível de risco.
+- Indicadores operacionais.
+- Informações relacionadas à quilometragem.
+- Visão consolidada da carteira de clientes.
+- Dados para auxiliar na priorização das ações de retenção.
+
+---
+
+# Agendamentos
+
+O sistema possui um fluxo completo para agendamento de revisões.
+
+É possível:
+
+- Selecionar uma concessionária.
+- Escolher uma data.
+- Escolher um horário.
+- Informar o tipo de serviço.
+- Adicionar observações.
+- Consultar agendamentos.
+- Acompanhar o status.
+- Concluir atendimentos.
+
+Também foram implementadas regras de negócio para evitar agendamentos inválidos, incluindo validações relacionadas à data e ao horário de atendimento.
+
+---
+
+# Autenticação e segurança
+
+O Ford Retain utiliza autenticação baseada em **JWT (JSON Web Token)**.
+
+Após o login, o backend gera um token utilizado nas requisições às rotas protegidas da API.
+
+O sistema possui separação entre:
+
+- Funcionário.
+- Cliente.
+
+As permissões são verificadas no backend antes do acesso aos recursos protegidos.
+
+Além disso:
+
+- Senhas são protegidas utilizando **bcrypt**.
+- Rotas sensíveis exigem autenticação.
+- O backend valida permissões de acesso.
+- O aplicativo mantém a sessão autenticada utilizando armazenamento local seguro da aplicação.
+
+---
+
+# Tecnologias utilizadas
 
 ## Front-end
 
@@ -95,8 +233,8 @@ O projeto foi desenvolvido como parte do **Challenge 2 — Pós-Vendas**, com fo
 - Expo
 - Expo Router
 - TypeScript
-- JavaScript
 - React Hooks
+- AsyncStorage
 - Responsive Design
 
 ## Back-end
@@ -104,6 +242,7 @@ O projeto foi desenvolvido como parte do **Challenge 2 — Pós-Vendas**, com fo
 - Node.js
 - Express
 - API REST
+- JWT
 - bcrypt
 - CORS
 
@@ -111,124 +250,201 @@ O projeto foi desenvolvido como parte do **Challenge 2 — Pós-Vendas**, com fo
 
 - SQLite
 
+## Deploy e distribuição
+
+- Vercel — aplicação web
+- Render — API/backend
+- Expo EAS Build — geração do aplicativo Android
+
 ---
 
-# 🔗 API REST
+# Arquitetura
 
-O aplicativo possui um backend próprio responsável pela comunicação entre a interface e o banco de dados.
+A solução segue uma arquitetura baseada em aplicação cliente, API REST e banco de dados.
 
-Principais rotas:
+```text
+┌──────────────────────────────┐
+│         Ford Retain          │
+│                              │
+│ React Native + Expo Router   │
+│                              │
+│ Funcionário     Cliente      │
+└──────────────┬───────────────┘
+               │
+               │ HTTPS / JSON
+               │ JWT
+               ▼
+┌──────────────────────────────┐
+│           API REST           │
+│                              │
+│ Node.js + Express            │
+│ Autenticação + Regras        │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│            SQLite            │
+│                              │
+│ Usuários                     │
+│ Clientes                     │
+│ Veículos                     │
+│ Agendamentos                 │
+└──────────────────────────────┘
+```
 
-### Usuários
+---
+
+# API REST
+
+A aplicação possui backend próprio responsável pelas regras de negócio, autenticação e comunicação com o banco de dados.
+
+## Autenticação
+
+```text
+POST /login
+POST /login-cliente-demo
+```
+
+## Usuários
 
 ```text
 POST /usuarios
-POST /login
 ```
 
-### Clientes
+## Clientes
 
 ```text
 GET /clientes
 GET /clientes/:id
 PUT /clientes/:id/status
+PUT /clientes/:id/quilometragem
+GET /clientes/:id/agendamentos
 ```
 
-### Agendamentos
+## Agendamentos
 
 ```text
 GET /agendamentos
 POST /agendamentos
+PUT /agendamentos/:id/concluir
 ```
 
-### Concessionárias
+## Concessionárias
 
 ```text
 GET /concessionarias
 ```
 
----
+As rotas protegidas utilizam:
 
-# 🔐 Segurança
-
-As senhas dos novos usuários não são armazenadas diretamente no banco de dados.
-
-O sistema utiliza **bcrypt** para gerar o hash das senhas antes do armazenamento.
-
-O cadastro também possui validações para impedir:
-
-- Campos vazios
-- E-mails inválidos
-- E-mails já cadastrados
-- Senhas com menos de 6 caracteres
-- Confirmação de senha diferente da senha informada
+```text
+Authorization: Bearer <token>
+```
 
 ---
 
-# 💾 Persistência de dados
+# Deploy
 
-O Ford Retain utiliza **SQLite** para armazenamento dos dados.
+## Front-end Web
 
-São armazenadas informações relacionadas a:
+A versão web do Ford Retain está publicada na Vercel:
 
-- Usuários
-- Clientes
-- Veículos
-- Status de atendimento
-- Agendamentos
+https://ford-retain.vercel.app
 
-Os dados permanecem salvos mesmo após o servidor ser encerrado e iniciado novamente.
+## Backend
+
+A API está publicada no Render:
+
+https://challenge-2026-master.onrender.com
+
+A aplicação utiliza o backend publicado configurado em:
+
+```text
+src/services/api.ts
+```
+
+```ts
+const API_URL =
+  "https://challenge-2026-master.onrender.com";
+```
 
 ---
 
-# 📱 Responsividade
+# APK Android
 
-O sistema foi adaptado para diferentes tamanhos de tela:
+A aplicação possui uma versão Android gerada através do **Expo EAS Build**.
 
-- Desktop
-- Tablet
-- Mobile
+O build utiliza o perfil:
 
-A interface utiliza layouts responsivos para reorganizar cards, formulários e informações de acordo com o tamanho da tela.
+```text
+preview
+```
+
+Comando utilizado:
+
+```bash
+npx eas-cli build -p android --profile preview
+```
+
+O APK foi instalado e validado em dispositivo Android físico.
+
+Foram testados os principais fluxos da aplicação, incluindo:
+
+- Inicialização do aplicativo.
+- Responsividade mobile.
+- Login do funcionário.
+- Autenticação JWT.
+- Dashboard.
+- Consulta de clientes.
+- Detalhes do cliente.
+- Agendamentos.
+- Logout.
+- Acesso ao Meu Ford.
+- Jornada do proprietário.
 
 ---
 
-# ▶️ Como executar o projeto
+# Responsividade
 
-## 1. Instalar as dependências
+O Ford Retain foi desenvolvido para diferentes tamanhos de tela.
 
-Na pasta principal do projeto:
+A interface possui adaptações para:
+
+- Desktop.
+- Tablet.
+- Smartphone.
+
+No aplicativo mobile, telas com maior quantidade de conteúdo possuem navegação vertical para garantir acesso aos componentes em diferentes tamanhos de dispositivo.
+
+---
+
+# Como executar o projeto
+
+## 1. Clonar o repositório
+
+```bash
+git clone https://github.com/LorenzzoDiass/Challenge-2026-master.git
+```
+
+Entre na pasta:
+
+```bash
+cd Challenge-2026-master
+```
+
+## 2. Instalar as dependências
 
 ```bash
 npm install
 ```
 
-## 2. Instalar as dependências do backend
-
-```bash
-cd backend
-npm install
-```
-
-## 3. Iniciar o backend
-
-Dentro da pasta `backend`:
-
-```bash
-node server.js
-```
-
-O servidor será iniciado na porta `3001`.
-
-## 4. Iniciar o aplicativo
-
-Em outro terminal, na pasta principal:
+## 3. Executar o aplicativo
 
 ```bash
 npx expo start
 ```
 
-Para executar no navegador:
+Para executar a versão web:
 
 ```bash
 npx expo start --web
@@ -236,47 +452,91 @@ npx expo start --web
 
 ---
 
-# ⚙️ Configuração da API
+# Executando o backend localmente
 
-O endereço utilizado pelo aplicativo para acessar o backend está configurado no arquivo:
+Entre na pasta do backend:
+
+```bash
+cd backend
+```
+
+Instale as dependências:
+
+```bash
+npm install
+```
+
+Execute:
+
+```bash
+node server.js
+```
+
+Por padrão, o backend local utiliza a porta:
 
 ```text
-src/services/api.ts
+3001
 ```
 
-Exemplo:
+> A versão publicada da aplicação utiliza a API hospedada no Render.
 
-```ts
-const API_URL = "http://10.0.0.131:3001";
+---
+
+# Estrutura principal
+
+```text
+Challenge-2026-master/
+│
+├── backend/
+│   ├── server.js
+│   └── ...
+│
+├── src/
+│   ├── app/
+│   ├── assets/
+│   ├── components/
+│   ├── services/
+│   └── ...
+│
+├── app.json
+├── eas.json
+├── package.json
+└── README.md
 ```
 
-Caso o projeto seja executado em outro computador ou outra rede, o endereço IP deve ser alterado para o IP da máquina que está executando o backend.
+---
+
+# Persistência de dados
+
+O projeto utiliza **SQLite** como banco de dados.
+
+Localmente, os dados ficam armazenados no arquivo do banco e permanecem disponíveis entre reinicializações da aplicação enquanto o arquivo é preservado.
+
+> Na hospedagem gratuita atual do backend, a persistência do arquivo SQLite depende do ambiente de execução. Para um cenário de produção, a arquitetura pode ser evoluída para utilizar um banco de dados persistente gerenciado.
 
 ---
 
-# 🚀 Futuras implementações
+# Próximas evoluções
 
-- Autenticação utilizando JWT
-- Recuperação de senha
-- Área específica para o cliente
-- Sistema de notificações
-- Integração com serviços de IA
-- Deploy do backend
-- Melhorias nos relatórios e analytics
+Possíveis evoluções do Ford Retain incluem:
 
----
-
-# 📸 Preview
-
-Sistema inspirado em soluções corporativas automotivas modernas, focado em retenção de clientes, acompanhamento de revisões e inteligência operacional no pós-venda.
+- Modelo preditivo de Machine Learning para estimativa de evasão.
+- Integração com fontes reais de dados da Ford.
+- Notificações de revisão.
+- Recuperação de senha.
+- Expansão dos benefícios personalizados.
+- Histórico completo da jornada do cliente.
+- Evolução dos dashboards.
+- Banco de dados gerenciado para ambiente produtivo.
+- Monitoramento e observabilidade da API.
 
 ---
 
-# 🎓 Challenge — Pós-Vendas
+# Challenge Ford — Pós-Vendas
 
-Projeto desenvolvido para o **Challenge — Pós-Vendas**.
+Projeto acadêmico desenvolvido para o Challenge Ford, com foco em soluções digitais para retenção e relacionamento no pós-venda.
 
-## 👥 Integrantes
+## Integrantes
 
 - **Lorenzzo Vendruscolo Dias** — RM558305
 - **Gabriel Martins Vannucci** — RM556883
@@ -286,8 +546,8 @@ Projeto desenvolvido para o **Challenge — Pós-Vendas**.
 
 ---
 
-# 👨‍💻 Repositório
+# Repositório
 
 GitHub:
 
-https://github.com/LorenzzoDiass
+https://github.com/LorenzzoDiass/Challenge-2026-master
