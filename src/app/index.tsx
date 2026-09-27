@@ -7,6 +7,7 @@ import {
   TextInput,
   ImageBackground,
   useWindowDimensions,
+  ScrollView,
 } from "react-native";
 
 import { useState } from "react";
@@ -288,12 +289,15 @@ export default function HomeScreen() {
         style={styles.darkOverlay}
       />
 
-      <View
-        style={[
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
           styles.contentWrapper,
           isMobile &&
             styles.contentWrapperMobile,
         ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* LADO ESQUERDO */}
 
@@ -557,6 +561,7 @@ export default function HomeScreen() {
                   setEmail(
                     texto
                   );
+
                   setErro("");
                 }}
                 autoCapitalize="none"
@@ -586,6 +591,7 @@ export default function HomeScreen() {
                   setSenha(
                     texto
                   );
+
                   setErro("");
                 }}
                 onSubmitEditing={
@@ -744,7 +750,7 @@ export default function HomeScreen() {
             </>
           )}
         </View>
-      </View>
+      </ScrollView>
     </ImageBackground>
   );
 }
@@ -765,25 +771,30 @@ const styles =
         "rgba(1, 10, 22, 0.78)",
     },
 
-    contentWrapper: {
+    scrollView: {
       flex: 1,
       width: "100%",
-      minHeight: "100%",
+      zIndex: 2,
+    },
+
+    contentWrapper: {
+      flexGrow: 1,
+      width: "100%",
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 80,
       paddingHorizontal: 28,
       paddingVertical: 40,
-      zIndex: 2,
     },
 
     contentWrapperMobile: {
       flexDirection: "column",
       gap: 32,
       paddingHorizontal: 20,
-      paddingVertical: 36,
-      justifyContent: "center",
+      paddingTop: 60,
+      paddingBottom: 50,
+      justifyContent: "flex-start",
     },
 
     leftContent: {
