@@ -551,3 +551,52 @@ Projeto acadêmico desenvolvido para o Challenge Ford, com foco em soluções di
 GitHub:
 
 https://github.com/LorenzzoDiass/Challenge-2026-master
+
+---
+
+# Demonstração da aplicação
+
+A seguir estão algumas telas da versão final do Ford Retain executada em dispositivo Android físico.
+
+## Acesso ao Ford Retain
+
+![Tela inicial](docs/prints/TELA-LOGIN.jpg)
+
+![Login do funcionário](docs/prints/TELA-FUNCIONARIO.jpg)
+
+## Painel corporativo
+
+![Dashboard](docs/prints/dashboard.jpg)
+
+## Clientes e veículos
+
+![Clientes](docs/prints/clientes.jpg)
+
+![Dados do cliente](docs/prints/clientes-dados.jpg)
+
+## Retain Score
+
+![Retain Score](docs/prints/retain-score.jpg)
+
+![Detalhes do Retain Score](docs/prints/retain-score2.jpg)
+
+## Analytics
+
+![Analytics](docs/prints/analytics.jpg)
+
+![Analytics - indicadores](docs/prints/analytics2.jpg)
+
+## Agendamentos
+
+![Agendamentos](docs/prints/agendamentos.jpg)
+
+## Meu Ford
+
+![Meu Ford](docs/prints/meu-ford.jpg)
+
+![Meu Ford - jornada](docs/prints/meu-ford2.jpg)
+
+![Meu Ford - serviços](docs/prints/meu-ford3.jpg)
+
+![Meu Ford - agendamento](docs/prints/meu-ford-agendamento.jpg)
+
